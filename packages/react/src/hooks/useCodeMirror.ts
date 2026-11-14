@@ -23,7 +23,7 @@ export type UseCodeMirrorOptions = {
 // 方言とスキーマ（補完）は、作り直さず差し替える。
 export const useCodeMirror = (
   containerRef: RefObject<HTMLDivElement | null>,
-  viewRef: RefObject<EditorView | null>,
+  viewRef: { current: EditorView | null },
   options: UseCodeMirrorOptions,
 ): void => {
   const language = useRef(new Compartment());

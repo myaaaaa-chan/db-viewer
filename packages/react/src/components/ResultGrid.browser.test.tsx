@@ -163,6 +163,23 @@ describe("ResultGrid", () => {
     expect(screen.getByRole("grid").element().getAttribute("aria-rowcount")).toBe("1001");
   });
 
+  it("列が多くても、見えている列だけを描く（列の仮想スクロール）", async () => {
+    const wide: ResultSet = {
+      columns: Array.from({ length: 300 }, (_, i) => ({ name: `c${i}`, dbType: "int4" })),
+      rows: [Array.from({ length: 300 }, (_, i) => String(i))],
+      truncated: false,
+      truncatedCells: [],
+    };
+    const screen = await render(
+      <Frame>
+        <ResultGrid result={wide} />
+      </Frame>,
+    );
+    await expect.element(screen.getByRole("columnheader", { name: /^c0/ })).toBeVisible();
+    expect(screen.getByRole("columnheader").elements().length).toBeLessThan(40);
+    expect(screen.getByRole("grid").element().getAttribute("aria-colcount")).toBe("300");
+  });
+
   it("行がなければ、列名を出したまま「行がありません」と表示する", async () => {
     const screen = await render(
       <Frame>

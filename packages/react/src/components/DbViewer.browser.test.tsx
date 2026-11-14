@@ -1,4 +1,5 @@
 import type { DataSource } from "@myaaaaa_chan/db-viewer-core";
+import { memoryTable } from "@myaaaaa_chan/db-viewer-core/testing";
 import { describe, expect, it, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
@@ -50,6 +51,40 @@ describe("ツリーでテーブルを開く", () => {
     await expect.element(screen.getByRole("treeitem", { name: "logs", exact: true })).toBeVisible();
     expect(screen.getByRole("treeitem", { name: "users", exact: true }).elements()).toHaveLength(0);
     await expect.element(screen.getByText("No matching views")).toBeVisible();
+  });
+
+  it("テーブルが数千あっても、見えている行だけを描き、検索は全件を対象にする", async () => {
+    const many = Array.from({ length: 3000 }, (_, i) =>
+      memoryTable({
+        name: `t${String(i).padStart(4, "0")}`,
+        columns: [{ name: "id", dbType: "int8" }],
+        rows: [],
+      }),
+    );
+    const screen = await render(
+      <Viewer
+        dataSource={createDataSource([
+          {
+            name: "main",
+            dialect: "postgres",
+            readOnly: true,
+            cancel: false,
+            schemas: [{ name: "public", tables: many }],
+          },
+        ])}
+      />,
+    );
+    await expect
+      .element(screen.getByRole("treeitem", { name: "t0000", exact: true }))
+      .toBeVisible();
+    expect(screen.getByRole("treeitem").elements().length).toBeLessThan(80);
+    expect(screen.getByText("(3000)")).toBeDefined();
+
+    await userEvent.fill(screen.getByRole("searchbox", { name: "Search tables" }), "t2999");
+    await expect
+      .element(screen.getByRole("treeitem", { name: "t2999", exact: true }))
+      .toBeVisible();
+    await expect.element(screen.getByText("(1 / 3000 matched)")).toBeVisible();
   });
 
   it("矢印キーでツリーを移動し、Enter でテーブルを開く", async () => {
