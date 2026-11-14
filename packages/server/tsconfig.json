@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "paths": {
+      "@myaaaaa_chan/db-viewer-core": ["../core/src/index.ts"]
+    }
+  },
+  "include": ["src", "*.config.ts"]
+}

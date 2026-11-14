@@ -1,0 +1,59 @@
+{
+  "name": "@myaaaaa_chan/db-viewer-server",
+  "version": "0.1.0",
+  "description": "Fetch handler and database adapters (PostgreSQL, SQLite) for embedding db-viewer in a web app.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@myaaaaa_chan/db-viewer-core": "workspace:*",
+    "valibot": "^1.5.0"
+  },
+  "peerDependencies": {
+    "@hono/node-server": "^2.1.8",
+    "hono": "^4.13.0",
+    "pg": ">=8.12.0"
+  },
+  "peerDependenciesMeta": {
+    "@hono/node-server": {
+      "optional": true
+    },
+    "hono": {
+      "optional": true
+    },
+    "pg": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@hono/node-server": "^2.1.8",
+    "@types/better-sqlite3": "^9.6.0",
+    "better-sqlite3": "^13.1.1",
+    "hono": "^4.13.18"
+  }
+}
