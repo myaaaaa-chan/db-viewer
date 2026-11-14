@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "React components for browsing a database (schema tree, data grid, SQL editor) in your web app.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/myaaaaa-chan/db-viewer.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://github.com/myaaaaa-chan/db-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/myaaaaa-chan/db-viewer/issues"
+  },
   "type": "module",
   "sideEffects": [
     "**/*.css"

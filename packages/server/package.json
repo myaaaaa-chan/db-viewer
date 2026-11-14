@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "Fetch handler and database adapters (PostgreSQL, SQLite) for embedding db-viewer in a web app.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/myaaaaa-chan/db-viewer.git",
+    "directory": "packages/server"
+  },
+  "homepage": "https://github.com/myaaaaa-chan/db-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/myaaaaa-chan/db-viewer/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {

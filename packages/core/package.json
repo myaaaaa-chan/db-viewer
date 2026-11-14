@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "Types, RPC schemas, Result, DataSource and pure SQL helpers shared by the db-viewer packages.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/myaaaaa-chan/db-viewer.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/myaaaaa-chan/db-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/myaaaaa-chan/db-viewer/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {

@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "Run db-viewer from the command line: browse tables and run SQL on PostgreSQL or SQLite in your browser.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/myaaaaa-chan/db-viewer.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/myaaaaa-chan/db-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/myaaaaa-chan/db-viewer/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"
