@@ -1,5 +1,5 @@
 export type { AdapterCapabilities, DbAdapter } from "./adapter";
-export { type PostgresAdapterOptions, postgresAdapter } from "./adapters/postgres";
+export { type PostgresAdapterOptions, type PostgresPool, postgresAdapter } from "./adapters/postgres";
 export {
   type SqliteAdapterOptions,
   type SqliteDatabaseLike,

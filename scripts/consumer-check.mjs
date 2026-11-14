@@ -2,6 +2,8 @@
 //   node scripts/consumer-check.mjs pack   <dir>
 //   node scripts/consumer-check.mjs smoke  <dir>
 //   node scripts/consumer-check.mjs types  <dir> <typescript-version>
+//   node scripts/consumer-check.mjs types-sqlite <dir> <typescript-version>
+//     (pg, pg-cursor and @types/pg are not installed: the types of a SQLite-only consumer)
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -10,7 +12,7 @@ import { join, resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const [mode, dirArg, tsVersion] = process.argv.slice(2);
 if (!mode || !dirArg) {
-  console.error("usage: consumer-check.mjs <pack|smoke|types> <tarball-dir> [typescript-version]");
+  console.error("usage: consumer-check.mjs <pack|smoke|types|types-sqlite> <tarball-dir> [typescript-version]");
   process.exit(2);
 }
 const tarballDir = resolve(dirArg);
@@ -61,8 +63,13 @@ const peers = {
   "react-dom": "^19.3.1",
 };
 
-const consumer = (extra) => {
+const postgresPackages = ["pg", "pg-cursor", "@types/pg"];
+
+const consumer = (extra, { withPostgres = true } = {}) => {
   const dir = mkdtempSync(join(tmpdir(), "dbv-consumer-"));
+  const installedPeers = Object.fromEntries(
+    Object.entries(peers).filter(([name]) => withPostgres || !postgresPackages.includes(name)),
+  );
   const files = tarballs();
   const fileDeps = Object.fromEntries(Object.entries(files).map(([n, p]) => [n, `file:${p}`]));
   writeFileSync(
@@ -72,7 +79,7 @@ const consumer = (extra) => {
         name: "consumer",
         private: true,
         type: "module",
-        dependencies: { ...fileDeps, ...peers, ...extra },
+        dependencies: { ...fileDeps, ...installedPeers, ...extra },
         overrides: fileDeps,
       },
       null,
@@ -110,25 +117,8 @@ console.log("smoke ok on node", process.version);
   run("node", ["smoke.mjs"], dir);
 };
 
-const types = () => {
-  if (!tsVersion) throw new Error("typescript version is required");
-  const dir = consumer({ typescript: tsVersion });
-  writeFileSync(
-    join(dir, "use.ts"),
-    `import { createHttpDataSource, DbViewer, type DataSource } from "@myaaaaa_chan/db-viewer-react";
-import { createHandler, postgresAdapter, sqliteAdapter, type DbAdapter } from "@myaaaaa_chan/db-viewer-server";
-import { toNodeHandler } from "@myaaaaa_chan/db-viewer-server/node";
-import { columnName } from "@myaaaaa_chan/db-viewer-core";
-import { createElement } from "react";
-
-export const ds: DataSource = createHttpDataSource({ endpoint: "/db" });
-export const element = createElement(DbViewer, { dataSource: ds, language: "ja", theme: "dark" });
-export const handler = createHandler({ connections: {}, authorize: () => true });
-export const node = toNodeHandler(handler);
-export const adapters: ReadonlyArray<(...a: never[]) => DbAdapter> = [postgresAdapter, sqliteAdapter];
-export const col = columnName;
-`,
-  );
+const typeCheck = (dir, source) => {
+  writeFileSync(join(dir, "use.ts"), source);
   for (const moduleResolution of ["Bundler", "NodeNext"]) {
     const module = moduleResolution === "NodeNext" ? "NodeNext" : "ESNext";
     writeFileSync(
@@ -153,7 +143,46 @@ export const col = columnName;
   }
 };
 
-const modes = { pack, smoke, types };
+const types = () => {
+  if (!tsVersion) throw new Error("typescript version is required");
+  typeCheck(
+    consumer({ typescript: tsVersion }),
+    `import { createHttpDataSource, DbViewer, type DataSource } from "@myaaaaa_chan/db-viewer-react";
+import { createHandler, postgresAdapter, sqliteAdapter, type DbAdapter } from "@myaaaaa_chan/db-viewer-server";
+import { toNodeHandler } from "@myaaaaa_chan/db-viewer-server/node";
+import { columnName } from "@myaaaaa_chan/db-viewer-core";
+import { createElement } from "react";
+
+export const ds: DataSource = createHttpDataSource({ endpoint: "/db" });
+export const element = createElement(DbViewer, { dataSource: ds, language: "ja", theme: "dark" });
+export const handler = createHandler({ connections: {}, authorize: () => true });
+export const node = toNodeHandler(handler);
+export const adapters: ReadonlyArray<(...a: never[]) => DbAdapter> = [postgresAdapter, sqliteAdapter];
+export const col = columnName;
+`,
+  );
+};
+
+// pg and @types/pg are optional peers. A SQLite-only consumer does not install them, so the
+// published declarations must not import "pg" (skipLibCheck is false).
+const typesSqlite = () => {
+  if (!tsVersion) throw new Error("typescript version is required");
+  typeCheck(
+    consumer({ typescript: tsVersion }, { withPostgres: false }),
+    `import Database from "better-sqlite3";
+import { createHandler, sqliteAdapter } from "@myaaaaa_chan/db-viewer-server";
+import { toNodeHandler } from "@myaaaaa_chan/db-viewer-server/node";
+
+export const handler = createHandler({
+  connections: { main: sqliteAdapter(new Database(":memory:")) },
+  authorize: () => true,
+});
+export const node = toNodeHandler(handler);
+`,
+  );
+};
+
+const modes = { pack, smoke, types, "types-sqlite": typesSqlite };
 const selected = modes[mode];
 if (!selected) throw new Error(`unknown mode ${mode}`);
 selected();

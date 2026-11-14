@@ -38,6 +38,16 @@ import { inTransaction, type Session } from "./session";
 import { queryRows, readStatement, type StatementResult } from "./statement";
 import { createTypeNameCache, type TypeField } from "./type-names";
 
+/**
+ * postgresAdapter が受け取る Pool の、型として要る分だけ。pg.Pool がそのまま渡せる。
+ * 公開する型に "pg" を出さないための型（ADR 010 §3）。pg と @types/pg を入れない SQLite だけの利用者が、
+ * skipLibCheck: false の型検査で落ちないようにする。
+ */
+export type PostgresPool = {
+  readonly connect: () => Promise<{ readonly release: (destroy?: boolean) => void }>;
+  readonly options: object;
+};
+
 export type PostgresAdapterOptions = {
   // 初期値 true。BEGIN READ ONLY で書き込みを止める。
   readonly readOnly?: boolean;
@@ -360,5 +370,10 @@ export const createPostgresAdapter = (
  *   文を流している間だけ受け付け、終わった後の接続は止めない（R5）
  * - 行数の上限は pg-cursor で maxRows + 1 行だけ読む（U4）
  */
-export const postgresAdapter = (pool: Pool, options: PostgresAdapterOptions = {}): DbAdapter =>
-  createPostgresAdapter(pool, options, DEFAULT_INTERNALS);
+export const postgresAdapter = (
+  pool: PostgresPool,
+  options: PostgresAdapterOptions = {},
+): DbAdapter =>
+  // 公開する型は構造的な最小限（PostgresPool）にし、中では pg.Pool として扱う。
+  // pg.Pool 以外を渡したときは、最初の問い合わせで失敗する
+  createPostgresAdapter(pool as Pool, options, DEFAULT_INTERNALS);

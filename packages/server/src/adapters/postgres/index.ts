@@ -1,1 +1,1 @@
-export { type PostgresAdapterOptions, postgresAdapter } from "./postgres-adapter";
+export { type PostgresAdapterOptions, type PostgresPool, postgresAdapter } from "./postgres-adapter";

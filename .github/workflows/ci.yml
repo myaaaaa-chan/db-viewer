@@ -92,6 +92,8 @@ jobs:
           - { name: "smoke node 24", node: 24, mode: smoke }
           - { name: "types TS 5", node: 22, mode: types, ts: 5 }
           - { name: "types TS 7", node: 22, mode: types, ts: 7 }
+          - { name: "types SQLite only TS 5", node: 22, mode: types-sqlite, ts: 5 }
+          - { name: "types SQLite only TS 7", node: 22, mode: types-sqlite, ts: 7 }
     name: consumer (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
