@@ -41,6 +41,9 @@
         "useConsistentArrayType": { "level": "error", "options": { "syntax": "generic" } },
         "noNonNullAssertion": "error"
       },
+      "complexity": {
+        "useLiteralKeys": "off"
+      },
       "suspicious": {
         "noExplicitAny": "error"
       }
