@@ -14,7 +14,8 @@
     "test:e2e": "pnpm --filter @myaaaaa_chan/db-viewer-e2e test",
     "typecheck": "pnpm -r typecheck",
     "lint": "biome check .",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "pack:local": "pnpm build && node scripts/consumer-check.mjs pack ../db-viewer-packs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",
