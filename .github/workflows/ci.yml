@@ -104,7 +104,7 @@ jobs:
           path: tarballs
       - run: node scripts/consumer-check.mjs ${{ matrix.mode }} tarballs ${{ matrix.ts }}
 
-  # packages/cli と e2e/ が入るまでは対象がなく、何も実行しない。
+  # 実際の CLI を起動する E2E。PostgreSQL の E2E は Testcontainers で、CI では Docker に繋がらないと失敗する。
   e2e:
     needs: build
     runs-on: ubuntu-latest
@@ -117,5 +117,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm --filter "$PLAYWRIGHT_PROJECT" exec playwright install --with-deps chromium
-      - run: pnpm -r --if-present e2e
+      - run: pnpm --filter @myaaaaa_chan/db-viewer-e2e exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
