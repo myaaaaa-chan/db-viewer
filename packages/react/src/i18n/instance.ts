@@ -23,7 +23,7 @@ export const buildResources = (overrides: DbvResources = {}) => {
 // 組み込み先の i18next には触れないよう、専用のインスタンスを作る。resources をその場で渡すので、初期化は同期で終わる。
 export const createDbvI18n = (options: {
   readonly language: string;
-  readonly resources?: DbvResources;
+  readonly resources?: DbvResources | undefined;
 }): i18n => {
   const instance = i18next.createInstance();
   void instance.init({

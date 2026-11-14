@@ -55,10 +55,10 @@ export const ja: Messages = {
     dataLabel: "{{table}} のデータ",
     resultLabel: "SQL の実行結果",
     resizeColumn: "{{column}} の列幅を変更",
-    rowCount_one: "{{count}} 行",
-    rowCount_other: "{{count}} 行",
-    columnCount_one: "{{count}} 列",
-    columnCount_other: "{{count}} 列",
+    rowCount_one: "{{formatted}} 行",
+    rowCount_other: "{{formatted}} 行",
+    columnCount_one: "{{formatted}} 列",
+    columnCount_other: "{{formatted}} 列",
   },
   footer: {
     selected: "{{size}}を選択中",
@@ -125,8 +125,6 @@ export const ja: Messages = {
     sqlState: "SQLSTATE {{code}}",
     position: "{{line}} 行目 {{column}} 文字目",
     goToError: "エラーの位置へ移動",
-    errorNote:
-      "DB が返したメッセージは翻訳せずにそのまま表示します。書き込みが許されていない場合（読み取り専用）や、時間切れ・中断・同時実行数の上限のときも、この枠に理由を表示します。",
   },
   error: {
     unauthorized: "認証に失敗しました。認証情報を確認してください。",

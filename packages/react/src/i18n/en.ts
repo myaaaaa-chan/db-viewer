@@ -53,10 +53,10 @@ export const en = {
     dataLabel: "{{table}} data",
     resultLabel: "SQL result",
     resizeColumn: "Resize column {{column}}",
-    rowCount_one: "{{count}} row",
-    rowCount_other: "{{count}} rows",
-    columnCount_one: "{{count}} column",
-    columnCount_other: "{{count}} columns",
+    rowCount_one: "{{formatted}} row",
+    rowCount_other: "{{formatted}} rows",
+    columnCount_one: "{{formatted}} column",
+    columnCount_other: "{{formatted}} columns",
   },
   footer: {
     selected: "{{size}} selected",
@@ -124,8 +124,6 @@ export const en = {
     sqlState: "SQLSTATE {{code}}",
     position: "Line {{line}}, column {{column}}",
     goToError: "Go to the error position",
-    errorNote:
-      "Messages returned by the database are shown as they are, without translation. Reasons such as read-only connections, timeouts, cancellation, and the concurrency limit are shown in the same box.",
   },
   error: {
     unauthorized: "You are not authorized. Check your credentials.",

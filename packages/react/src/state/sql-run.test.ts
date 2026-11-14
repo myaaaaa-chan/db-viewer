@@ -2,13 +2,14 @@ import { err, ok, queryId } from "@myaaaaa_chan/db-viewer-core";
 import { describe, expect, it } from "vitest";
 import {
   absoluteErrorPosition,
+  errorLocation,
   initialSqlRunState,
   type SqlRunAction,
   sqlRunReducer,
 } from "./sql-run";
 
 const id = queryId("q1");
-const target = { from: 10, to: 28, text: "SELECT id, emial FROM t" };
+const target = { from: 10, to: 28, text: "SELECT id, emial FROM t", line: 2, column: 1 };
 const started = (queryIdValue = id): SqlRunAction => ({
   type: "runStarted",
   queryId: queryIdValue,
@@ -124,5 +125,40 @@ describe("absoluteErrorPosition", () => {
     ]);
     expect(absoluteErrorPosition(noPosition)).toBeNull();
     expect(absoluteErrorPosition(initialSqlRunState)).toBeNull();
+  });
+});
+
+describe("errorLocation", () => {
+  const failedAt = (position: number | null, executed = target) =>
+    run([
+      { type: "runStarted", queryId: id, startedAt: 1000, target: executed },
+      {
+        type: "runFinished",
+        queryId: id,
+        finishedAt: 1100,
+        result: err({ kind: "query", message: "x", sqlState: null, position }),
+      },
+    ]);
+
+  it("文の中の位置を、エディタ全体での行と桁（1 始まり）に直す", () => {
+    expect(errorLocation(failedAt(11))).toEqual({ line: 2, column: 12 });
+  });
+
+  it("文が途中の桁から始まるときは、1 行目の桁にその分を足す", () => {
+    expect(errorLocation(failedAt(4, { ...target, text: "a bad", line: 3, column: 10 }))).toEqual({
+      line: 3,
+      column: 14,
+    });
+  });
+
+  it("文が複数行のときは、2 行目以降の桁は行頭から数える", () => {
+    expect(
+      errorLocation(failedAt(9, { ...target, text: "SELECT 1\nFROM x", line: 5, column: 3 })),
+    ).toEqual({ line: 6, column: 1 });
+  });
+
+  it("位置のないエラーや、失敗以外の状態では null を返す", () => {
+    expect(errorLocation(failedAt(null))).toBeNull();
+    expect(errorLocation(initialSqlRunState)).toBeNull();
   });
 });

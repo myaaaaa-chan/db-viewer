@@ -169,6 +169,18 @@ describe("flattenTree（検索）", () => {
     });
   });
 
+  it("検索中は、読み込み済みで一致するテーブルがないスキーマの行を出さない", () => {
+    const schemasWithMatch = searched("sess")
+      .filter((r) => r.kind === "schema")
+      .map((r) => r.schema);
+    expect(schemasWithMatch).toEqual(["public"]);
+  });
+
+  it("検索語を消すと、スキーマの行はすべて戻る", () => {
+    const rows = flattenTree(input());
+    expect(rows.filter((r) => r.kind === "schema")).toHaveLength(2);
+  });
+
   it("一致した文字の範囲を行に持たせる", () => {
     const row = searched("sess").find((r) => r.kind === "table");
     expect(row).toMatchObject({ match: { before: "", match: "sess", after: "ions" } });

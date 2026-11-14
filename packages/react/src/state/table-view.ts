@@ -88,7 +88,10 @@ export const nextSort = (current: Sort | null, column: ColumnName): Sort | null 
   return current.direction === "asc" ? { column, direction: "desc" } : null;
 };
 
-export const rowsQueryOf = (table: TableRef, state: TableViewState): RowsQuery => ({
+export const rowsQueryOf = (
+  table: TableRef,
+  state: Pick<TableViewState, "filters" | "rawWhere" | "sort" | "page">,
+): RowsQuery => ({
   table,
   filters: state.filters,
   rawWhere: state.rawWhere,

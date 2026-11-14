@@ -5,9 +5,12 @@ import type {
   QueryOutcome,
   Statement,
 } from "@myaaaaa_chan/db-viewer-core";
+import { lineColumn } from "../lib/error-position";
 
-// 実行した範囲（target）を結果にも持たせる。エラーの位置はこの範囲の先頭からの位置なので、
-// エディタ全体での位置に直すのに要る。
+// 実行した文。line と column は、エディタ全体での文の先頭の位置（1 始まり）。
+// エラーの位置は文の先頭からの位置なので、エディタ全体での位置に直すのに要る。
+export type ExecutedStatement = Statement & { readonly line: number; readonly column: number };
+
 export type SqlRunState =
   | { readonly status: "idle" }
   | { readonly status: "noStatement" }
@@ -15,12 +18,16 @@ export type SqlRunState =
       readonly status: "running";
       readonly queryId: QueryId;
       readonly startedAt: number;
-      readonly target: Statement;
+      readonly target: ExecutedStatement;
     }
-  | { readonly status: "succeeded"; readonly target: Statement; readonly outcome: QueryOutcome }
+  | {
+      readonly status: "succeeded";
+      readonly target: ExecutedStatement;
+      readonly outcome: QueryOutcome;
+    }
   | {
       readonly status: "failed";
-      readonly target: Statement;
+      readonly target: ExecutedStatement;
       readonly error: DbViewerError;
       readonly elapsedMs: number;
     };
@@ -32,7 +39,7 @@ export type SqlRunAction =
       readonly type: "runStarted";
       readonly queryId: QueryId;
       readonly startedAt: number;
-      readonly target: Statement;
+      readonly target: ExecutedStatement;
     }
   | {
       readonly type: "runFinished";
@@ -76,4 +83,15 @@ export const sqlRunReducer = (state: SqlRunState, action: SqlRunAction): SqlRunS
 export const absoluteErrorPosition = (state: SqlRunState): number | null => {
   if (state.status !== "failed" || state.error.kind !== "query") return null;
   return state.error.position === null ? null : state.target.from + state.error.position;
+};
+
+// エディタ全体での、エラーの行と桁（1 始まり）。
+export const errorLocation = (state: SqlRunState): { line: number; column: number } | null => {
+  if (state.status !== "failed" || state.error.kind !== "query") return null;
+  if (state.error.position === null) return null;
+  const { target } = state;
+  const within = lineColumn(target.text, state.error.position);
+  return within.line === 1
+    ? { line: target.line, column: target.column + within.column - 1 }
+    : { line: target.line + within.line - 1, column: within.column };
 };

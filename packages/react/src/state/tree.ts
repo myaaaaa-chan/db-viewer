@@ -129,6 +129,14 @@ export const flattenTree = (input: TreeInput): ReadonlyArray<TreeRow> => {
   schemas.value.forEach((schema, schemaIndex) => {
     const key = schemaKey(schema);
     const expanded = ui.overrides[key] ?? schema === opened;
+    const remote = tables[schema] ?? idle;
+    // 検索は読み込み済みのテーブルだけが対象。一致がないスキーマと、まだ読み込んでいないスキーマは出さない
+    const hiddenBySearch =
+      query !== "" &&
+      (remote.status === "ready"
+        ? !remote.value.some((t) => containsIgnoringCase(t.ref.name, query))
+        : remote.status === "idle" && !expanded);
+    if (hiddenBySearch) return;
     rows.push({
       kind: "schema",
       key,
@@ -140,7 +148,6 @@ export const flattenTree = (input: TreeInput): ReadonlyArray<TreeRow> => {
     });
     if (!expanded) return;
 
-    const remote = tables[schema] ?? idle;
     if (remote.status === "idle" || remote.status === "loading") {
       rows.push({ kind: "status", key: `${key}:loading`, level: 2, status: "loading" });
       return;

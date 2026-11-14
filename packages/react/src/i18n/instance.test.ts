@@ -37,11 +37,11 @@ describe("createDbvI18n", () => {
 
   it("単数形と複数形を言語ごとの規則で選ぶ", () => {
     const en = createDbvI18n({ language: "en" });
-    expect(translate(en, "grid.rowCount", { count: 1 })).toBe("1 row");
-    expect(translate(en, "grid.rowCount", { count: 2 })).toBe("2 rows");
-    expect(translate(createDbvI18n({ language: "ja" }), "grid.rowCount", { count: 2 })).toBe(
-      "2 行",
-    );
+    expect(translate(en, "grid.rowCount", { count: 1, formatted: "1" })).toBe("1 row");
+    expect(translate(en, "grid.rowCount", { count: 2, formatted: "2" })).toBe("2 rows");
+    expect(
+      translate(createDbvI18n({ language: "ja" }), "grid.rowCount", { count: 2, formatted: "2" }),
+    ).toBe("2 行");
   });
 
   it("値は HTML エスケープしない（DB の名前をそのまま出す）", () => {
