@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PLAYWRIGHT_PROJECT: "@myaaaaa_chan/db-viewer-react"
+
+jobs:
+  # build は Node 22.18 以上が要る（ADR 009）。examples の build もここで通る（R7 の確認）。
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: node scripts/consumer-check.mjs pack tarballs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarballs
+          path: tarballs/*.tgz
+          if-no-files-found: error
+
+  # 単体テスト、アダプターテスト（Testcontainers）、Browser Mode テストをまとめて流す。
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # better-sqlite3 13 は Node 22 以上でしか動かない（Node 20 ではプロセスが落ちる）。Node 20 では 12 に差し替える（ADR 013）。
+      - if: matrix.node == 20
+        run: pnpm --filter @myaaaaa_chan/db-viewer-server add -D better-sqlite3@^12 --allow-build=better-sqlite3
+      - run: pnpm --filter "$PLAYWRIGHT_PROJECT" exec playwright install --with-deps chromium
+      - run: pnpm test
+
+  react-versions:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        react: [18, 19]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: >-
+          pnpm --filter "$PLAYWRIGHT_PROJECT" add -D
+          react@^${{ matrix.react }} react-dom@^${{ matrix.react }}
+          @types/react@^${{ matrix.react }} @types/react-dom@^${{ matrix.react }}
+      - run: pnpm --filter "$PLAYWRIGHT_PROJECT" exec playwright install --with-deps chromium
+      - run: pnpm exec vitest run --project react --project react:browser
+
+  # 公開する形（tarball）を、利用者と同じ入れ方で確かめる。
+  consumer:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "smoke node 20", node: 20, mode: smoke }
+          - { name: "smoke node 22", node: 22, mode: smoke }
+          - { name: "smoke node 24", node: 24, mode: smoke }
+          - { name: "types TS 5", node: 22, mode: types, ts: 5 }
+          - { name: "types TS 7", node: 22, mode: types, ts: 7 }
+    name: consumer (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: tarballs
+          path: tarballs
+      - run: node scripts/consumer-check.mjs ${{ matrix.mode }} tarballs ${{ matrix.ts }}
+
+  # packages/cli と e2e/ が入るまでは対象がなく、何も実行しない。
+  e2e:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter "$PLAYWRIGHT_PROJECT" exec playwright install --with-deps chromium
+      - run: pnpm -r --if-present e2e
