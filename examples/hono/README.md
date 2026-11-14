@@ -9,4 +9,4 @@ pnpm --filter example-hono serve   # http://127.0.0.1:3000 (set PORT to change)
 ```
 
 For hot reload, run `serve` in one terminal and `pnpm --filter example-hono dev` in another (Vite proxies `/admin/db`).
-`authorize` is `() => true` here because the server listens on `127.0.0.1` only. A real app checks its session.
+`authorize` is `() => true` here because the server listens on `127.0.0.1` only. A real app checks its session. Do not expose this example beyond `127.0.0.1` while `authorize` is `() => true`: anyone who can reach it can run SQL.

@@ -10,4 +10,4 @@ pnpm --filter example-next start    # http://localhost:3000/admin
 ```
 
 `better-sqlite3` is listed in `serverExternalPackages` of `next.config.ts` because it is a native module.
-`authorize` is `() => true` for this local example. A real app checks its session.
+`authorize` is `() => true` for this local example. A real app checks its session. Do not deploy or expose this example with `authorize: () => true`: anyone who can reach it can run SQL.

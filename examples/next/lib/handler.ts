@@ -9,5 +9,6 @@ db.exec(readFileSync(join(process.cwd(), "../../fixtures/seed/sqlite.sql"), "utf
 export const handler = createHandler({
   connections: { main: sqliteAdapter(db) },
   // This example is for local use only. A real app checks its session here.
+  // Never publish this with `() => true`.
   authorize: () => true,
 });

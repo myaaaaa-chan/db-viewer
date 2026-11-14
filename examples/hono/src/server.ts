@@ -11,6 +11,7 @@ db.exec(readFileSync(new URL("../../../fixtures/seed/sqlite.sql", import.meta.ur
 const handler = createHandler({
   connections: { main: sqliteAdapter(db) },
   // This example listens on 127.0.0.1 only. A real app checks its session here.
+  // Never publish this with `() => true`.
   authorize: () => true,
 });
 
