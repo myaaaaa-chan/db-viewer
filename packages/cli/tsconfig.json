@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"],
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@myaaaaa_chan/db-viewer-core": ["../core/src/index.ts"],
+      "@myaaaaa_chan/db-viewer-server": ["../server/src/index.ts"],
+      "@myaaaaa_chan/db-viewer-react": ["../react/src/index.ts"],
+      "@myaaaaa_chan/db-viewer-react/styles.css": ["../react/src/styles.css"]
+    }
+  },
+  "include": ["src", "ui", "*.config.ts"]
+}

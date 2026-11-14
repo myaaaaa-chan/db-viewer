@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - examples/*
+  - e2e
 allowBuilds:
   cpu-features: false
   protobufjs: false
