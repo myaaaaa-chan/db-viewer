@@ -40,7 +40,7 @@ npx @myaaaaa_chan/db-viewer-cli ./app.db
 npx @myaaaaa_chan/db-viewer-cli --name main=postgres://... --name cache=./cache.sqlite --write
 ```
 
-The command is `db-viewer`. It checks the connection first (`SELECT 1` for PostgreSQL), prints a URL such as `http://127.0.0.1:51234/#token=...` and opens it. Stop it with Ctrl+C.
+It needs Node.js 22 or later. The command is `db-viewer`. It checks the connection first (`SELECT 1` for PostgreSQL), prints a URL such as `http://127.0.0.1:51234/#token=...` and opens it. Stop it with Ctrl+C.
 It listens on `127.0.0.1` only and protects its API with a random token in the URL fragment. Anyone who has that URL can run SQL with the privileges of the database user, so do not share it.
 
 | Option                   | Meaning                                                                                |

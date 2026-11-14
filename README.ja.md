@@ -40,7 +40,7 @@ npx @myaaaaa_chan/db-viewer-cli ./app.db
 npx @myaaaaa_chan/db-viewer-cli --name main=postgres://... --name cache=./cache.sqlite --write
 ```
 
-コマンド名は `db-viewer` です。起動時にまず接続を確かめ（PostgreSQL では `SELECT 1`）、`http://127.0.0.1:51234/#token=...` のような URL を表示して開きます。Ctrl+C で止めます。
+Node.js 22 以上で動きます。コマンド名は `db-viewer` です。起動時にまず接続を確かめ（PostgreSQL では `SELECT 1`）、`http://127.0.0.1:51234/#token=...` のような URL を表示して開きます。Ctrl+C で止めます。
 `127.0.0.1` だけで待ち受け、ランダムなトークンで API を守ります。トークンは URL のフラグメントで渡します。この URL を知っている人は、DB ユーザーの権限で SQL を実行できます。共有しないでください。
 
 | 引数                     | 説明                                                                                      |

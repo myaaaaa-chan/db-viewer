@@ -47,5 +47,5 @@ arguments.
 
 ## Requirements
 
-Node.js 20 or later. For PostgreSQL, the CLI starts with `SELECT 1` and stops with exit code `1` if it cannot
+Node.js 22 or later (the bundled `better-sqlite3` 13 does not run on Node.js 20, which reached end of life on 2026-04-30). For PostgreSQL, the CLI starts with `SELECT 1` and stops with exit code `1` if it cannot
 connect.
