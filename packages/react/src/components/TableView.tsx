@@ -28,7 +28,7 @@ export type TableViewProps = {
 
 const TABS: ReadonlyArray<{
   readonly tab: DetailTab;
-  readonly label: Parameters<ReturnType<typeof useT>["t"]>[0];
+  readonly label: MessageKey;
 }> = [
   { tab: "rows", label: "table.tabRows" },
   { tab: "columns", label: "table.tabColumns" },

@@ -24,11 +24,7 @@ const Frame = (props: { readonly children: React.ReactNode }) => (
   <div style={{ display: "flex", width: 700, height: 300 }}>{props.children}</div>
 );
 
-const stubClipboard = () => {
-  const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
-  vi.stubGlobal("navigator", Object.create(navigator, { clipboard: { value: { writeText } } }));
-  return writeText;
-};
+const stubClipboard = () => vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
 
 describe("ResultGrid", () => {
   it("DbViewerProvider がなくても、列名と型・行の値を表示する", async () => {
