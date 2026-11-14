@@ -102,6 +102,8 @@ export const sqliteAdapter = (
   const rowsOf = (sql: string, params: ReadonlyArray<SqlParam> = []): ReadonlyArray<Row> =>
     Array.from(openStatement(db, sql).rows(params));
 
+  const totalChanges = (): number => Number(rowsOf("SELECT total_changes()")[0]?.[0]);
+
   const columnsOf = (table: TableRef): ReadonlyArray<ColumnInfo> =>
     table.schema === MAIN_SCHEMA
       ? rowsOf(CATALOG_SQL.columns, [table.name]).map(columnInfoFromRow)
@@ -299,8 +301,4 @@ export const sqliteAdapter = (
 
     cancel: () => Promise.resolve(err({ kind: "unsupported", feature: "cancel" })),
   };
-
-  function totalChanges(): number {
-    return Number(rowsOf("SELECT total_changes()")[0]?.[0]);
-  }
 };

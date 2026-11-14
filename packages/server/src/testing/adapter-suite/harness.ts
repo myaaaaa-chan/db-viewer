@@ -1,4 +1,4 @@
-import type { DbResult, Dialect, SchemaName } from "@myaaaaa_chan/db-viewer-core";
+import type { Dialect, SchemaName } from "@myaaaaa_chan/db-viewer-core";
 import type { DbAdapter } from "../../adapter";
 import type { Limits } from "../../limits";
 
@@ -50,7 +50,3 @@ export type AdapterHarness = {
   /** 方言ごとの追加テスト。共通テストの「方言固有」の中で流れる。 */
   readonly extraCases?: ReadonlyArray<AdapterCase>;
 };
-
-// 共通テストの中で、失敗の種類で判別する小さな補助。
-export const errorKindOf = <T>(result: DbResult<T>): string =>
-  result.ok ? "ok" : result.error.kind;

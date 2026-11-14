@@ -136,6 +136,22 @@ describe("sqliteAdapter: 値", () => {
     ]);
   });
 
+  it("巨大な結果でも、上限を 1 行超えたところで読み止める（全行をメモリに載せない）", async () => {
+    const result = await sqliteAdapter(open()).execute(
+      "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < 50000000) SELECT x FROM c",
+      q(1),
+      resolveLimits({ maxRows: 5 }),
+    );
+    expect(result.ok && result.value.kind === "rows" && result.value.rows).toEqual([
+      ["1"],
+      ["2"],
+      ["3"],
+      ["4"],
+      ["5"],
+    ]);
+    expect(result.ok && result.value.kind === "rows" && result.value.truncated).toBe(true);
+  });
+
   it("空の SQL とコメントだけの SQL は、DB に渡さず query エラーにする", async () => {
     const adapter = sqliteAdapter(open());
     for (const sql of ["", "   ", "-- コメントだけ", "/* x */ ;"]) {
