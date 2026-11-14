@@ -301,14 +301,17 @@ describe("fetchRows", () => {
   });
 
   describe("上限と切り詰め", () => {
-    it("要求したページが maxRows を超えたときだけ、打ち切って truncated にする", async () => {
+    it("limit と maxRows の小さいほうで打ち切り、まだ返していない行があれば truncated にする", async () => {
       const ds = build({ maxRows: 2 });
-      const over = unwrap(await ds.fetchRows(main, rowsQuery({ limit: 100 })));
-      expect(over.rows).toHaveLength(2);
-      expect(over.truncated).toBe(true);
+      const capped = unwrap(await ds.fetchRows(main, rowsQuery({ limit: 100 })));
+      expect(capped.rows).toHaveLength(2);
+      expect(capped.truncated).toBe(true);
 
-      expect(unwrap(await ds.fetchRows(main, rowsQuery({ limit: 2 }))).truncated).toBe(false);
-      expect(unwrap(await ds.fetchRows(main, rowsQuery({ limit: 3, offset: 3 }))).truncated).toBe(
+      const page = unwrap(await ds.fetchRows(main, rowsQuery({ limit: 1 })));
+      expect(page.rows).toHaveLength(1);
+      expect(page.truncated).toBe(true);
+
+      expect(unwrap(await ds.fetchRows(main, rowsQuery({ limit: 2, offset: 3 }))).truncated).toBe(
         false,
       );
     });

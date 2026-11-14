@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "paths": {
+      "@myaaaaa_chan/db-viewer-core": ["../core/src/index.ts"],
+      "@myaaaaa_chan/db-viewer-core/testing": ["../core/src/testing/index.ts"]
+    },
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "test", "dev", "*.config.ts"]
+}

@@ -7,3 +7,5 @@ coverage
 .env
 .env.*
 *.log
+__screenshots__
+.vitest-attachments

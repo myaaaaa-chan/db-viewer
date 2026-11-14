@@ -344,8 +344,8 @@ export const createMemoryDataSource = (options: MemoryDataSourceOptions): DataSo
             ok(
               toResultSet(
                 table,
-                sorted.slice(query.offset, query.offset + query.limit),
-                maxRows,
+                sorted.slice(query.offset),
+                Math.min(query.limit, maxRows),
                 maxCellChars,
               ),
             ),

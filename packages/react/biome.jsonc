@@ -1,0 +1,25 @@
+{
+  "root": false,
+  "extends": "//",
+  "overrides": [
+    {
+      // 仮想スクロールの表・ツリー・接続の選択は、ARIA の複合部品（grid / tree / combobox）を div で組む。
+      // フォーカスは親の要素が持ち、行やセルは aria-activedescendant で指すので、個々の要素には tabindex を付けない。
+      "includes": [
+        "src/components/ResultGrid.tsx",
+        "src/components/SchemaTree.tsx",
+        "src/components/ConnectionSelect.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off",
+            "useFocusableInteractive": "off",
+            "useKeyWithClickEvents": "off",
+            "noNoninteractiveElementToInteractiveRole": "off"
+          }
+        }
+      }
+    }
+  ]
+}
