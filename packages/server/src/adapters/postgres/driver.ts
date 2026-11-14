@@ -11,13 +11,19 @@ export class DriverNotInstalledError extends Error {
   }
 }
 
+// ESM は ERR_MODULE_NOT_FOUND、CommonJS に変換するバンドラーなどは MODULE_NOT_FOUND。
+// このパッケージ自身が見つからないときだけ。pg-cursor の中の別の依存が欠けたときは、そのエラーを返す。
+const isMissing = (cause: unknown, packageName: string): boolean =>
+  cause instanceof Error &&
+  "code" in cause &&
+  (cause.code === "ERR_MODULE_NOT_FOUND" || cause.code === "MODULE_NOT_FOUND") &&
+  cause.message.includes(`'${packageName}'`);
+
 const load = async <T>(packageName: string, importPackage: () => Promise<T>): Promise<T> => {
   try {
     return await importPackage();
   } catch (cause) {
-    const notFound =
-      cause instanceof Error && "code" in cause && cause.code === "ERR_MODULE_NOT_FOUND";
-    throw notFound ? new DriverNotInstalledError(packageName) : cause;
+    throw isMissing(cause, packageName) ? new DriverNotInstalledError(packageName) : cause;
   }
 };
 
