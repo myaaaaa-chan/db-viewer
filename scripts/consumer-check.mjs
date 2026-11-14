@@ -12,7 +12,9 @@ import { join, resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const [mode, dirArg, tsVersion] = process.argv.slice(2);
 if (!mode || !dirArg) {
-  console.error("usage: consumer-check.mjs <pack|smoke|types|types-sqlite> <tarball-dir> [typescript-version]");
+  console.error(
+    "usage: consumer-check.mjs <pack|smoke|types|types-sqlite> <tarball-dir> [typescript-version]",
+  );
   process.exit(2);
 }
 const tarballDir = resolve(dirArg);
