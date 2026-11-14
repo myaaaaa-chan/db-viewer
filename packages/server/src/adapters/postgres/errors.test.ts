@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { connectionSurvives, type ErrorContext, toDbError, toUtf16Index } from "./errors";
+import { DriverNotInstalledError } from "./driver";
+import {
+  connectionSurvives,
+  type ErrorContext,
+  toDbError,
+  toUtf16Index,
+  UnsupportedStatementError,
+} from "./errors";
 
 const databaseError = (message: string, props: Record<string, unknown>) =>
   Object.assign(new Error(message), { name: "error", severity: "ERROR", ...props });
@@ -121,6 +128,26 @@ describe("toDbError: DB のエラーではないもの（接続の失敗など�
     expect(toDbError("boom", context())).toEqual({
       kind: "internal",
       message: "An unexpected database error occurred.",
+    });
+  });
+});
+
+describe("toDbError: こちらで作ったエラー", () => {
+  it("使えない文は、feature_not_supported（0A000）の query にする", () => {
+    expect(
+      toDbError(new UnsupportedStatementError("COPY FROM STDIN is not supported."), context()),
+    ).toEqual({
+      kind: "query",
+      message: "COPY FROM STDIN is not supported.",
+      sqlState: "0A000",
+      position: null,
+    });
+  });
+
+  it("入っていないドライバは、入れ方を internal のメッセージで伝える", () => {
+    expect(toDbError(new DriverNotInstalledError("pg-cursor"), context())).toEqual({
+      kind: "internal",
+      message: "pg-cursor is not installed. Run: npm install pg-cursor",
     });
   });
 });

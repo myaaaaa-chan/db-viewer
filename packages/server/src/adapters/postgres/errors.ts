@@ -29,6 +29,14 @@ export const isDatabaseError = (cause: unknown): cause is DatabaseErrorLike => {
   return typeof code === "string" && SQLSTATE.test(code) && typeof severity === "string";
 };
 
+// ドライバがこの形で受け付けない文（COPY ... FROM STDIN）。利用者に伝える内容で、秘密を含まない
+export class UnsupportedStatementError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnsupportedStatementError";
+  }
+}
+
 // ERROR は文が失敗しただけで、接続は使える。FATAL と PANIC は DB 側が接続を閉じるので、
 // その接続でカーソルを閉じたり ROLLBACK を待ったりしてはいけない（応答が来ない）。
 export const connectionSurvives = (cause: unknown): boolean =>
@@ -61,6 +69,10 @@ const positionOf = (cause: DatabaseErrorLike, sent: SentSql | null): number | nu
 export const toDbError = (cause: unknown, context: ErrorContext): DbViewerError => {
   // 利用者が直せる内容で、秘密を含まない
   if (cause instanceof DriverNotInstalledError) return { kind: "internal", message: cause.message };
+  // 0A000 = feature_not_supported
+  if (cause instanceof UnsupportedStatementError) {
+    return { kind: "query", message: cause.message, sqlState: "0A000", position: null };
+  }
   if (!isDatabaseError(cause)) {
     const code = (cause as { code?: unknown } | null)?.code;
     return {
