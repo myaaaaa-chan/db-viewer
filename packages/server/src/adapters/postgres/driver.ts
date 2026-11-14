@@ -1,15 +1,9 @@
 import type { Client } from "pg";
 import type Cursor from "pg-cursor";
+import { DriverNotInstalledError } from "./errors";
 
 // pg と pg-cursor は optional な peerDependencies（ADR 001）。SQLite だけを使う利用者の import が
 // 失敗しないよう、使う時点で読み込む。
-
-export class DriverNotInstalledError extends Error {
-  constructor(packageName: string) {
-    super(`${packageName} is not installed. Run: npm install ${packageName}`);
-    this.name = "DriverNotInstalledError";
-  }
-}
 
 // ESM は ERR_MODULE_NOT_FOUND、CommonJS に変換するバンドラーなどは MODULE_NOT_FOUND。
 // このパッケージ自身が見つからないときだけ。pg-cursor の中の別の依存が欠けたときは、そのエラーを返す。

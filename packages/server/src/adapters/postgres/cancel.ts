@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import { loadClient } from "./driver";
+import { ConnectionFailedError } from "./errors";
 import { queryRows } from "./statement";
 
 /**
@@ -14,7 +15,12 @@ export const cancelBackend = async (pool: Pool, pid: number): Promise<boolean> =
   const client = new Client(pool.options);
   // 接続が切れたときの 'error' を未処理にしない（プロセスを落とさない）
   client.on("error", () => undefined);
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (cause) {
+    // 認証や接続のエラーのメッセージは、ユーザー名や DB 名、アドレスを含みうる
+    throw new ConnectionFailedError(cause);
+  }
   try {
     const { rows } = await queryRows(client, "SELECT pg_catalog.pg_cancel_backend($1::int)", [pid]);
     return rows[0]?.[0] === "t";

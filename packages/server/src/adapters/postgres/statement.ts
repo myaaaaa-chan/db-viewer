@@ -4,7 +4,7 @@ import { connectionSurvives, UnsupportedStatementError } from "./errors";
 
 // 値は DB が出力した文字列のまま受け取る（02 §3）。型の変換は問い合わせごとの指定だけで変え、
 // pg.types のグローバルな設定には触れない（同じプロセスの ORM などの動きを変えないため。03 §4）。
-const TEXT_TYPES: CustomTypesConfig = { getTypeParser: () => (value: string) => value };
+export const TEXT_TYPES: CustomTypesConfig = { getTypeParser: () => (value: string) => value };
 
 export type Cell = string | null;
 

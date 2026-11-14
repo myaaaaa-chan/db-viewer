@@ -1,3 +1,4 @@
+import net from "node:net";
 import { ok, schemaName, tableName } from "@myaaaaa_chan/db-viewer-core";
 import pg from "pg";
 import Cursor from "pg-cursor";
@@ -10,7 +11,8 @@ import {
 } from "../../testing/adapter-suite";
 import { errorValue, nextQueryId, okValue } from "../../testing/adapter-suite/context";
 import { detectDocker, type PostgresServer, startPostgres } from "../../testing/postgres-container";
-import { postgresAdapter } from "./postgres-adapter";
+import { cancelBackend } from "./cancel";
+import { createPostgresAdapter, postgresAdapter } from "./postgres-adapter";
 import { inTransaction } from "./session";
 import { queryRows, readStatement } from "./statement";
 
@@ -30,6 +32,35 @@ const waitFor = async (condition: () => Promise<boolean> | boolean, what: string
     await sleep(25);
   }
   throw new Error(`timed out waiting for ${what}`);
+};
+
+// 最初の forwardFirst 本の接続だけを DB に中継し、それ以降は受け付けるだけで何も返さない。
+// 中断の依頼を届ける一時的な接続が、使えない状況を作る。
+const startProxy = async (target: { host: string; port: number }, forwardFirst: number) => {
+  const sockets = new Set<net.Socket>();
+  let accepted = 0;
+  const server = net.createServer((client) => {
+    sockets.add(client);
+    client.on("error", () => undefined);
+    client.on("close", () => sockets.delete(client));
+    accepted++;
+    if (accepted > forwardFirst) return;
+    const upstream = net.connect(target.port, target.host);
+    sockets.add(upstream);
+    upstream.on("error", () => client.destroy());
+    client.on("error", () => upstream.destroy());
+    client.pipe(upstream);
+    upstream.pipe(client);
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as net.AddressInfo;
+  return {
+    port,
+    close: async () => {
+      for (const socket of sockets) socket.destroy();
+      await new Promise((resolve) => server.close(resolve));
+    },
+  };
 };
 
 describe.skipIf(skipReason !== null)(
@@ -698,6 +729,259 @@ describe.skipIf(skipReason !== null)(
           } finally {
             await pool.end();
           }
+        },
+      },
+      {
+        name: "接続を取る段階の DB のエラーは、ユーザー名・DB 名・アドレスを含めず、SQLSTATE だけを伝える（認証・DB がない）",
+        run: async () => {
+          const bad = (overrides: Partial<pg.PoolConfig>) =>
+            new pg.Pool({
+              host: server.host,
+              port: server.port,
+              user: server.user,
+              password: server.password,
+              database: server.database,
+              max: 1,
+              ...overrides,
+            });
+          const cases: ReadonlyArray<readonly [pg.PoolConfig, string]> = [
+            [{ password: "wrong-password" }, "Database connection error (28P01)."],
+            [{ database: "no_such_db_xyz" }, "Database connection error (3D000)."],
+          ];
+          for (const [overrides, message] of cases) {
+            const pool = bad(overrides);
+            try {
+              const adapter = postgresAdapter(pool);
+              const failures = [
+                errorValue(await adapter.listSchemas()),
+                errorValue(await adapter.execute("SELECT 1", nextQueryId(), limits())),
+              ];
+              for (const failure of failures) {
+                expect(failure).toEqual({ kind: "internal", message });
+              }
+              // 中断の依頼を届ける接続も、同じ設定で張る。同じ扱いにする
+              await expect(cancelBackend(pool, 1)).rejects.toMatchObject({ message });
+            } finally {
+              await pool.end();
+            }
+          }
+        },
+      },
+      {
+        name: "他のセッションが表をロックしていても、メタデータの取得はタイムアウトで返り、接続を握り続けない",
+        run: async ({ open }) => {
+          const env = await open();
+          await env.exec("CREATE TABLE locked (id integer PRIMARY KEY, plan text DEFAULT 'free')");
+          const migration = new pg.Client({
+            connectionString: server.uri,
+            options: `-c search_path=${env.schema}`,
+          });
+          await migration.connect();
+          const pool = poolOn(env.schema, 3);
+          try {
+            await migration.query("BEGIN");
+            await migration.query("ALTER TABLE locked ADD COLUMN note text");
+            const adapter = createPostgresAdapter(
+              pool,
+              {},
+              { catalogTimeoutMs: 500, cancelDeliveryTimeoutMs: 5_000 },
+            );
+            const ref = { schema: env.schema, name: tableName("locked") };
+            const startedAt = performance.now();
+            const results = await Promise.all([
+              adapter.getTableDetail(ref),
+              adapter.getTableDetail(ref),
+              adapter.getTableDetail(ref),
+            ]);
+            for (const result of results) {
+              expect(errorValue(result)).toEqual({ kind: "timeout", timeoutMs: 500 });
+            }
+            expect(performance.now() - startedAt).toBeLessThan(5_000);
+            expect(pool.waitingCount).toBe(0);
+
+            await migration.query("ROLLBACK");
+            expect((await adapter.getTableDetail(ref)).ok).toBe(true);
+          } finally {
+            await migration.end();
+            await pool.end();
+          }
+        },
+      },
+      {
+        name: "接続を待っている間の中断は、待つのをやめてすぐ cancelled を返し、同時実行の枠も戻す",
+        run: async ({ open }) => {
+          const env = await open();
+          const pool = poolOn(env.schema, 1);
+          try {
+            const adapter = postgresAdapter(pool);
+            const only = limits({ maxConcurrentQueries: 1 });
+            const held = await pool.connect();
+            try {
+              const first = nextQueryId();
+              const waiting = adapter.execute(SLEEP_FOREVER, first, only);
+              await waitFor(() => pool.waitingCount === 1, "execute to wait for a connection");
+              expect(okValue(await adapter.cancel(first))).toEqual({ cancelled: true });
+              // 接続は握られたまま。それでも、待っている側は終わる
+              expect(errorValue(await waiting)).toEqual({ kind: "cancelled" });
+
+              // 枠が戻っているので、次は busy ではなく、また接続を待つ。
+              // （待ちをやめた側の取得は pg-pool のキューに残り、接続が空いたときに、使われずに返される）
+              const queued = pool.waitingCount;
+              const second = nextQueryId();
+              const next = adapter.execute(SLEEP_FOREVER, second, only);
+              await waitFor(() => pool.waitingCount === queued + 1, "second execute to wait");
+              expect(okValue(await adapter.cancel(second))).toEqual({ cancelled: true });
+              expect(errorValue(await next)).toEqual({ kind: "cancelled" });
+            } finally {
+              held.release();
+            }
+            // 待ちをやめた後に取れた接続は、使われずに Pool へ戻っている
+            expect(
+              okValue(await adapter.execute("SELECT 1 AS n", nextQueryId(), limits())),
+            ).toMatchObject({ kind: "rows", rows: [["1"]] });
+          } finally {
+            await pool.end();
+          }
+        },
+      },
+      {
+        name: "中断の依頼を届ける接続が使えないときは、時間で待つのをやめ、その接続を Pool に戻さない",
+        run: async ({ open }) => {
+          const env = await open();
+          const proxy = await startProxy({ host: server.host, port: server.port }, 1);
+          const pool = new pg.Pool({
+            host: "127.0.0.1",
+            port: proxy.port,
+            user: server.user,
+            password: server.password,
+            database: server.database,
+            options: `-c search_path=${env.schema}`,
+            max: 1,
+          });
+          try {
+            const adapter = createPostgresAdapter(
+              pool,
+              {},
+              { catalogTimeoutMs: 5_000, cancelDeliveryTimeoutMs: 500 },
+            );
+            const id = nextQueryId();
+            const running = adapter.execute(
+              SLEEP_FOREVER,
+              id,
+              limits({ statementTimeoutMs: 1_500 }),
+            );
+            await waitFor(
+              async () =>
+                (
+                  await admin.query(
+                    "SELECT 1 FROM pg_stat_activity WHERE state = 'active' AND query = $1",
+                    [SLEEP_FOREVER],
+                  )
+                ).rowCount === 1,
+              "pg_sleep to start",
+            );
+            // 2 本目の接続（中断用）は、受け付けられるだけで返事がない
+            const cancelled = await adapter.cancel(id);
+            expect(errorValue(cancelled)).toEqual({
+              kind: "internal",
+              message: "Timed out sending the cancel request to the database.",
+            });
+            // 中断は届いていないので、文は statement_timeout で終わる。中断を依頼した扱いにはならない
+            expect(errorValue(await running)).toEqual({ kind: "timeout", timeoutMs: 1_500 });
+            // 後から届くかもしれない接続は、Pool に戻されず捨てられている
+            expect(pool.totalCount).toBe(0);
+          } finally {
+            await pool.end();
+            await proxy.close();
+          }
+        },
+      },
+      {
+        name: "組み込み先が int4 のパーサーを替えていても、中断は届く（pid を文字列として読む）",
+        run: async ({ open }) => {
+          const env = await open();
+          const pool = poolOn(env.schema, 1);
+          const original = pg.types.getTypeParser(23);
+          pg.types.setTypeParser(23, (value: string) => ({ wrapped: value }));
+          try {
+            const adapter = postgresAdapter(pool);
+            const { id, running } = await startSleeping(adapter);
+            expect(okValue(await adapter.cancel(id))).toEqual({ cancelled: true });
+            expect(errorValue(await running)).toEqual({ kind: "cancelled" });
+          } finally {
+            pg.types.setTypeParser(23, original);
+            await pool.end();
+          }
+        },
+      },
+      {
+        name: "実行中の queryId は、別の実行に使わせない。中断は先に始めたほうに届く",
+        run: async ({ open }) => {
+          const env = await open();
+          const pool = poolOn(env.schema, 2);
+          try {
+            const adapter = postgresAdapter(pool);
+            const { id, running } = await startSleeping(adapter);
+            const duplicate = await adapter.execute("SELECT 1", id, limits());
+            expect(errorValue(duplicate)).toMatchObject({ kind: "query" });
+            expect(okValue(await adapter.cancel(id))).toEqual({ cancelled: true });
+            expect(errorValue(await running)).toEqual({ kind: "cancelled" });
+            // 終われば、同じ ID をまた使える
+            expect((await adapter.execute("SELECT 1", id, limits())).ok).toBe(true);
+          } finally {
+            await pool.end();
+          }
+        },
+      },
+      {
+        name: "パーティション表を参照する外部キーは、PostgreSQL が内部で作る分を除いて 1 本。DDL は流し直せる",
+        run: async ({ open }) => {
+          const env = await open();
+          await env.exec(
+            "CREATE TABLE invoices (id integer, year integer, PRIMARY KEY (id, year)) PARTITION BY RANGE (year)",
+          );
+          await env.exec(
+            "CREATE TABLE invoices_2024 PARTITION OF invoices FOR VALUES FROM (2024) TO (2025)",
+          );
+          await env.exec(
+            "CREATE TABLE invoices_2025 PARTITION OF invoices FOR VALUES FROM (2025) TO (2026)",
+          );
+          await env.exec(`CREATE TABLE line_items (
+            id integer PRIMARY KEY, invoice_id integer, invoice_year integer,
+            FOREIGN KEY (invoice_id, invoice_year) REFERENCES invoices (id, year)
+          )`);
+          const ref = { schema: env.schema, name: tableName("line_items") };
+          const detail = okValue(await env.adapter.getTableDetail(ref));
+          expect(detail.foreignKeys).toHaveLength(1);
+          expect(detail.foreignKeys[0]?.references.table.name).toBe("invoices");
+
+          await env.exec("DROP TABLE line_items");
+          await env.exec(detail.ddl.text);
+          expect(okValue(await env.adapter.getTableDetail(ref)).foreignKeys).toEqual(
+            detail.foreignKeys,
+          );
+        },
+      },
+      {
+        name: "生成列（PostgreSQL 18 の VIRTUAL を含む）は、既定値ではなく生成列として扱う",
+        run: async ({ open }) => {
+          const env = await open();
+          const version = await admin.query("SHOW server_version_num");
+          const supportsVirtual = Number(version.rows[0].server_version_num) >= 180000;
+          await env.exec(`CREATE TABLE gen (
+            a integer,
+            s integer GENERATED ALWAYS AS (a * 3) STORED
+            ${supportsVirtual ? ", v integer GENERATED ALWAYS AS (a * 2) VIRTUAL" : ""}
+          )`);
+          const ref = { schema: env.schema, name: tableName("gen") };
+          const detail = okValue(await env.adapter.getTableDetail(ref));
+          expect(detail.columns.map((c) => [c.name, c.defaultValue])).toEqual(
+            detail.columns.map((c) => [c.name, null]),
+          );
+          if (supportsVirtual) expect(detail.ddl.text).toContain("VIRTUAL");
+          await env.exec("DROP TABLE gen");
+          await env.exec(detail.ddl.text);
+          expect(okValue(await env.adapter.getTableDetail(ref)).columns).toEqual(detail.columns);
         },
       },
     ];

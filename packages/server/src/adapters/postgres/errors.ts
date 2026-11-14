@@ -1,5 +1,4 @@
 import type { DbViewerError } from "@myaaaaa_chan/db-viewer-core";
-import { DriverNotInstalledError } from "./driver";
 
 // ドライバに送った SQL。DB が返す位置は、この text の中の位置になる。
 // offset は、text が利用者の入力の SQL の何文字目（UTF-16）から始まるか。
@@ -28,6 +27,40 @@ export const isDatabaseError = (cause: unknown): cause is DatabaseErrorLike => {
   const { code, severity } = cause as Error & { code?: unknown; severity?: unknown };
   return typeof code === "string" && SQLSTATE.test(code) && typeof severity === "string";
 };
+
+// 利用者にそのまま見せてよいメッセージを持つエラー。接続先やユーザー名などを含めないことは、作る側が守る
+export class SafeMessageError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = new.target.name;
+  }
+}
+
+export class DriverNotInstalledError extends SafeMessageError {
+  constructor(packageName: string) {
+    super(`${packageName} is not installed. Run: npm install ${packageName}`);
+  }
+}
+
+// 接続を取る・張る段階の失敗。DB が返した認証や接続のエラーは、ユーザー名・DB 名・クライアントの
+// アドレスを含みうる（"pg_hba.conf rejects connection for host ..."）ので、コードだけを伝える。
+export class ConnectionFailedError extends SafeMessageError {
+  constructor(cause: unknown) {
+    const code = (cause as { code?: unknown } | null)?.code;
+    super(
+      typeof code === "string"
+        ? `Database connection error (${code}).`
+        : "Database connection error.",
+    );
+  }
+}
+
+// 中断の依頼を DB に届ける接続が、時間内に使えなかった
+export class CancelTimeoutError extends SafeMessageError {
+  constructor() {
+    super("Timed out sending the cancel request to the database.");
+  }
+}
 
 // ドライバがこの形で受け付けない文（COPY ... FROM STDIN）。利用者に伝える内容で、秘密を含まない
 export class UnsupportedStatementError extends Error {
@@ -67,8 +100,7 @@ const positionOf = (cause: DatabaseErrorLike, sent: SentSql | null): number | nu
  * 接続先を含みうる接続エラーのメッセージは載せない（02 §7）。
  */
 export const toDbError = (cause: unknown, context: ErrorContext): DbViewerError => {
-  // 利用者が直せる内容で、秘密を含まない
-  if (cause instanceof DriverNotInstalledError) return { kind: "internal", message: cause.message };
+  if (cause instanceof SafeMessageError) return { kind: "internal", message: cause.message };
   // 0A000 = feature_not_supported
   if (cause instanceof UnsupportedStatementError) {
     return { kind: "query", message: cause.message, sqlState: "0A000", position: null };

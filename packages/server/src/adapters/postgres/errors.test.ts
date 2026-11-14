@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DriverNotInstalledError } from "./driver";
 import {
+  CancelTimeoutError,
+  ConnectionFailedError,
   connectionSurvives,
+  DriverNotInstalledError,
   type ErrorContext,
   toDbError,
   toUtf16Index,
@@ -148,6 +150,38 @@ describe("toDbError: こちらで作ったエラー", () => {
     expect(toDbError(new DriverNotInstalledError("pg-cursor"), context())).toEqual({
       kind: "internal",
       message: "pg-cursor is not installed. Run: npm install pg-cursor",
+    });
+  });
+});
+
+describe("toDbError: 接続を取る・張る段階の失敗", () => {
+  it("DB が返した認証や接続のエラーは、ユーザー名・DB 名・アドレスを含むメッセージを捨て、SQLSTATE だけを伝える", () => {
+    const rejected = databaseError(
+      'pg_hba.conf rejects connection for host "192.168.215.1", user "svc_reporting", database "billing_prod", no encryption',
+      { code: "28000", severity: "FATAL" },
+    );
+    expect(toDbError(new ConnectionFailedError(rejected), context())).toEqual({
+      kind: "internal",
+      message: "Database connection error (28000).",
+    });
+  });
+
+  it("システムのエラーはそのコード、コードのないエラーは汎用のメッセージだけを伝える", () => {
+    const refused = Object.assign(new Error("connect ECONNREFUSED 10.1.2.3:5432"), {
+      code: "ECONNREFUSED",
+    });
+    expect(new ConnectionFailedError(refused).message).toBe(
+      "Database connection error (ECONNREFUSED).",
+    );
+    expect(
+      new ConnectionFailedError(new Error("timeout exceeded when trying to connect")).message,
+    ).toBe("Database connection error.");
+  });
+
+  it("中断の依頼が時間内に届かなかったことは、internal で伝える", () => {
+    expect(toDbError(new CancelTimeoutError(), context())).toEqual({
+      kind: "internal",
+      message: "Timed out sending the cancel request to the database.",
     });
   });
 });

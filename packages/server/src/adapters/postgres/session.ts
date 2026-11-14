@@ -1,6 +1,7 @@
-import { type DbResult, err } from "@myaaaaa_chan/db-viewer-core";
+import { type DbResult, type DbViewerError, err } from "@myaaaaa_chan/db-viewer-core";
 import type { Pool, PoolClient } from "pg";
-import { connectionSurvives, type ErrorContext, toDbError } from "./errors";
+import { ConnectionFailedError, connectionSurvives, type ErrorContext, toDbError } from "./errors";
+import { TEXT_TYPES } from "./statement";
 
 export type TransactionOptions = {
   readonly readOnly: boolean;
@@ -13,6 +14,13 @@ export type Session = {
   readonly client: PoolClient;
   // 接続の向こうの backend の pid（Pool の前に pgbouncer などがあっても、DB 側の値）
   readonly pid: number;
+  // この接続を Pool に戻さず捨てる（COMMIT / ROLLBACK は通常どおり行う）
+  readonly discard: () => void;
+};
+
+export type TransactionHooks = {
+  // 接続を待っている間に、これが解決したら待つのをやめて、解決した値のエラーを返す
+  readonly abortConnect?: Promise<DbViewerError>;
 };
 
 // 接続を貸している間に切れても、'error' が未処理でプロセスが落ちないようにする。
@@ -37,9 +45,29 @@ const begin = async (client: PoolClient, options: TransactionOptions): Promise<n
   const results = await client.query({
     text: beginStatements(client, options).join(";\n"),
     rowMode: "array",
+    // 組み込み先が int4 のパーサーを替えていても、pid を数として読めるように
+    types: TEXT_TYPES,
   });
   const last = Array.isArray(results) ? results[results.length - 1] : results;
   return Number(last?.rows[0]?.[0]);
+};
+
+type Connected = { readonly client: PoolClient } | { readonly aborted: DbViewerError };
+
+// Pool が使い切られていると、pool.connect() は（connectionTimeoutMillis が 0 の既定では）いつまでも待つ。
+// 待っている間に中断が来たら、待つのをやめる。後から取れた接続は、使わずに返す。
+const connect = async (pool: Pool, hooks: TransactionHooks): Promise<Connected> => {
+  const connecting = pool.connect();
+  if (hooks.abortConnect === undefined) return { client: await connecting };
+  const aborted = hooks.abortConnect.then((error) => ({ aborted: error }));
+  const winner = await Promise.race([connecting.then((client) => ({ client })), aborted]);
+  if ("aborted" in winner) {
+    connecting.then(
+      (client) => client.release(),
+      () => undefined,
+    );
+  }
+  return winner;
 };
 
 /**
@@ -57,20 +85,30 @@ export const inTransaction = async <T>(
   options: TransactionOptions,
   errorContext: ErrorContext,
   work: (session: Session) => Promise<DbResult<T>>,
+  hooks: TransactionHooks = {},
 ): Promise<DbResult<T>> => {
-  let client: PoolClient;
+  let connected: Connected;
   try {
-    client = await pool.connect();
+    connected = await connect(pool, hooks);
   } catch (cause) {
-    return err(toDbError(cause, errorContext));
+    return err(toDbError(new ConnectionFailedError(cause), errorContext));
   }
+  if ("aborted" in connected) return err(connected.aborted);
+
+  const { client } = connected;
   client.on("error", ignoreConnectionError);
   let discard = false;
   try {
     let outcome: DbResult<T>;
     try {
       const pid = await begin(client, options);
-      outcome = await work({ client, pid });
+      outcome = await work({
+        client,
+        pid,
+        discard: () => {
+          discard = true;
+        },
+      });
     } catch (cause) {
       outcome = err(toDbError(cause, errorContext));
     }
@@ -78,38 +116,10 @@ export const inTransaction = async <T>(
       await client.query(outcome.ok && !options.readOnly ? "COMMIT" : "ROLLBACK");
     } catch (cause) {
       // 終わらせられなかった接続は Pool に戻さず捨てる。work が失敗していたら、その失敗のほうを返す
-      discard = !connectionSurvives(cause);
+      discard = discard || !connectionSurvives(cause);
       if (outcome.ok) outcome = err(toDbError(cause, errorContext));
     }
     return outcome;
-  } finally {
-    client.off("error", ignoreConnectionError);
-    client.release(discard);
-  }
-};
-
-/**
- * カタログの読み取りなど、トランザクションを使わない短い処理に接続を 1 本貸す。
- */
-export const withClient = async <T>(
-  pool: Pool,
-  errorContext: ErrorContext,
-  work: (client: PoolClient) => Promise<DbResult<T>>,
-): Promise<DbResult<T>> => {
-  let client: PoolClient;
-  try {
-    client = await pool.connect();
-  } catch (cause) {
-    return err(toDbError(cause, errorContext));
-  }
-  client.on("error", ignoreConnectionError);
-  let discard = false;
-  try {
-    return await work(client);
-  } catch (cause) {
-    // 文が失敗しただけなら接続は使える。それ以外（接続が切れたなど）は捨てる
-    discard = !connectionSurvives(cause);
-    return err(toDbError(cause, errorContext));
   } finally {
     client.off("error", ignoreConnectionError);
     client.release(discard);

@@ -54,19 +54,42 @@ const handler = createHandler({
 - **Connect as a read-only database user.** `readOnly` is one layer of defence. Each request runs in its own
   `BEGIN READ ONLY` transaction, and the SQL you type runs as one statement over the extended protocol, so a
   second statement (`COMMIT; DELETE ...`) is rejected by the database. The last line of defence is the
-  privileges of the database user.
-- **Writes (`readOnly: false`).** Each request ends with `COMMIT`. Settings that your SQL changes with a
-  plain `SET` (for example `SET search_path`) stay on that Pool connection after the `COMMIT`; with
-  `readOnly: true` they are rolled back. Another reason for a dedicated Pool.
+  privileges of the database user: with the `dblink` extension installed, `dblink_exec` runs a write in
+  another session, outside the read-only transaction (measured), so do not install it for this user.
+- **Set `connectionTimeoutMillis` and an `error` listener on the Pool.** `pg` waits for a free connection
+  forever by default (`connectionTimeoutMillis: 0`), so a request that waits for a connection of a Pool
+  that is in use never ends by itself (cancelling it does end it). `pg` also emits `error` on the Pool when
+  an idle connection is closed by the server, and Node.js ends the process if nobody listens
+  (`pool.on("error", ...)`), for example when the SQL you type terminates the other sessions.
+- **State that a statement leaves in the session stays on the Pool connection.** Everything inside the
+  transaction is rolled back, but not session-level advisory locks (`pg_advisory_lock`), `PREPARE`d
+  statements, `DEALLOCATE ALL`, `LISTEN`, or `PREPARE TRANSACTION` (if `max_prepared_transactions` is above
+  0). With `readOnly: false` each request ends with `COMMIT`, so a plain `SET` (for example
+  `SET search_path`, `SET client_encoding`) and `DECLARE ... WITH HOLD` cursors stay as well. Use a Pool
+  that only the viewer uses, and a database user that may not do these things. The adapter does not run
+  `DISCARD ALL`, because that would also reset the prepared statements of the app on a shared Pool.
 - **Time zone.** `timeZone` runs `SET LOCAL TimeZone` before each request, so `timestamptz` values are shown in
   that zone and other users of the Pool are not affected. Without it, the database default is used.
 - **Values.** Results are read as text, with a per-query `types` option. The adapter never calls
   `pg.types.setTypeParser`, so ORMs in the same process keep their parsers. Column types are shown as
   `format_type` prints them (`integer[]`, `character varying(255)`, `numeric(10,2)`).
 - **Cancelling needs one more connection.** If the database has no free connection (`max_connections`), the
-  cancel request fails and the query runs until `statementTimeoutMs`.
+  cancel request fails and the query runs until `statementTimeoutMs`. The request is given up after 5 s (a
+  design value, not measured); the Pool connection that ran the query is then closed instead of reused.
+- **Catalog reads (schemas, tables, table details) have a 30 s timeout** and run in a read-only transaction.
+  Another session that holds a lock on the table (for example a running `ALTER TABLE`) makes the detail
+  of that table time out instead of waiting.
+- **Very large values.** `execute` cuts a cell to `maxCellChars` after it has been received, and `fetchCell`
+  returns the whole value, so the process has to hold what the database sends. A single value of about
+  512 million characters or more cannot be received by Node.js (`ERR_STRING_TOO_LONG` is thrown inside `pg`
+  and ends the process), and many large values in one result use that much memory. `fetchRows` cuts the
+  cells in SQL and is not affected. Keep such tables away from the viewer, or give the database user a
+  `statement_timeout`/row-level permissions that do not allow reading them.
 - **Not supported.** `COPY ... FROM STDIN` is rejected with SQLSTATE `0A000`. `COPY ... TO STDOUT` runs, but
-  its output is discarded and only the number of rows is shown.
+  its output is discarded and only the number of rows is shown. A statement that contains `;` inside it
+  (`CREATE FUNCTION ... BEGIN ATOMIC ...; ...; END`, a rule with several actions in parentheses) is
+  answered with `multipleStatements`, because the editor's statement splitter treats it as several statements.
+- **A `queryId` that is still running is refused.** Use a new id for every run.
 - **DDL is approximate.** The `CREATE` statement shown for a table is built from the catalog
   (`approximate: true`). Views use `pg_get_viewdef`.
 - **Tested with** PostgreSQL 14, 17 and 18 (Testcontainers). The tests need Docker; set `DOCKER_HOST` when

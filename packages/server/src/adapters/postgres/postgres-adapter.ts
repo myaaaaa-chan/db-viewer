@@ -34,7 +34,7 @@ import {
 import { loadCursor } from "./driver";
 import { type ErrorContext, type SentSql, toDbError } from "./errors";
 import { createInFlightRegistry, type InFlightRequest } from "./in-flight";
-import { inTransaction, type Session, withClient } from "./session";
+import { inTransaction, type Session } from "./session";
 import { queryRows, readStatement, type StatementResult } from "./statement";
 import { createTypeNameCache, type TypeField } from "./type-names";
 
@@ -56,11 +56,20 @@ const queryError = (message: string): DbViewerError => ({
 
 const tableNotFound = (table: TableRef): DbViewerError => ({ kind: "tableNotFound", table });
 
-// タイムアウトの対象にならない処理（カタログの読み取り、中断の依頼）で、エラーを変換するときの文脈
-const NO_STATEMENT: ErrorContext = {
-  timeoutMs: DEFAULT_LIMITS.statementTimeoutMs,
-  cancelRequested: false,
-  sent: null,
+// 設計上の値（未計測）。メタデータには limits が渡されないので、既定のタイムアウトと同じにする
+const CATALOG_TIMEOUT_MS = DEFAULT_LIMITS.statementTimeoutMs;
+// 中断の依頼を DB に届ける接続が使えないときに、待つのをやめる時間。設計上の値（未計測）
+const CANCEL_DELIVERY_TIMEOUT_MS = 5_000;
+
+// テストで短くするための値。公開しない（index.ts から出さない）
+export type PostgresAdapterInternals = {
+  readonly catalogTimeoutMs: number;
+  readonly cancelDeliveryTimeoutMs: number;
+};
+
+const DEFAULT_INTERNALS: PostgresAdapterInternals = {
+  catalogTimeoutMs: CATALOG_TIMEOUT_MS,
+  cancelDeliveryTimeoutMs: CANCEL_DELIVERY_TIMEOUT_MS,
 };
 
 const relationOf = async (client: PoolClient, table: TableRef): Promise<Relation | null> => {
@@ -87,21 +96,24 @@ const lookupTypeNames = async (
   return rows.map((row) => row[0] ?? null);
 };
 
-/**
- * PostgreSQL のアダプター（03_サーバー §4）。pg の Pool を受け取る。
- *
- * - 1 回の依頼 = 1 つのトランザクション。利用者の SQL は 1 文だけを extended protocol で流す（R3、R4）
- * - 型の変換は問い合わせごとに文字列のままにする。pg.types のグローバルな設定は変えない
- * - 中断は Pool を通さない一時的な接続で pg_cancel_backend を呼ぶ。Pool を使い切っていても届く（R8）。
- *   文を流している間だけ受け付け、終わった後の接続は止めない（R5）
- * - 行数の上限は pg-cursor で maxRows + 1 行だけ読む（U4）
- */
-export const postgresAdapter = (pool: Pool, options: PostgresAdapterOptions = {}): DbAdapter => {
+export const createPostgresAdapter = (
+  pool: Pool,
+  options: PostgresAdapterOptions,
+  internals: PostgresAdapterInternals,
+): DbAdapter => {
   const readOnly = options.readOnly ?? true;
   const timeZone = options.timeZone;
   const gate = createConcurrencyGate();
   const typeNames = createTypeNameCache();
-  const inFlight = createInFlightRegistry((pid) => cancelBackend(pool, pid));
+  const inFlight = createInFlightRegistry((pid) => cancelBackend(pool, pid), {
+    deliveryTimeoutMs: internals.cancelDeliveryTimeoutMs,
+  });
+  // タイムアウトの対象にならない処理（中断の依頼）で、エラーを変換するときの文脈
+  const noStatement: ErrorContext = {
+    timeoutMs: internals.catalogTimeoutMs,
+    cancelRequested: false,
+    sent: null,
+  };
 
   const timeoutContext = (limits: Limits): ErrorContext => ({
     timeoutMs: limits.statementTimeoutMs,
@@ -123,11 +135,19 @@ export const postgresAdapter = (pool: Pool, options: PostgresAdapterOptions = {}
       ),
     );
 
+  // カタログの読み取りは、トランザクションの外に出さない。固定の問い合わせでも、他のセッションが表を
+  // ロックしていると（実行中の ALTER TABLE など）止まり、Pool を使い切るので、タイムアウトをかける。
+  // 同時実行数の上限（busy）はかけない。ツリーを開くたびに busy になるのを避けるため。
   const catalog = <T>(work: (client: PoolClient) => Promise<DbResult<T>>): Promise<DbResult<T>> =>
-    withClient(pool, NO_STATEMENT, work);
+    inTransaction(
+      pool,
+      { readOnly: true, statementTimeoutMs: internals.catalogTimeoutMs, timeZone: undefined },
+      { timeoutMs: internals.catalogTimeoutMs, cancelRequested: false, sent: null },
+      ({ client }) => work(client),
+    );
 
   const runUserStatement = async (
-    { client, pid }: Session,
+    { client, pid, discard }: Session,
     statement: { readonly text: string; readonly from: number },
     request: InFlightRequest,
     limits: Limits,
@@ -140,9 +160,14 @@ export const postgresAdapter = (pool: Pool, options: PostgresAdapterOptions = {}
       sent,
     });
 
+    // 中断の依頼が時間内に届かなかった接続は、後から届いて次のクエリを止めないよう、Pool に戻さない
+    const finish = async () => {
+      if ((await request.finishStatement()) === "abandoned") discard();
+    };
+
     // 準備の間に中断が来ていたら、文は送らない
     if (request.startStatement(pid) === "cancelled") {
-      await request.finishStatement();
+      await finish();
       return err({ kind: "cancelled" });
     }
     const startedAt = performance.now();
@@ -151,10 +176,10 @@ export const postgresAdapter = (pool: Pool, options: PostgresAdapterOptions = {}
       result = await readStatement(client, Cursor, statement.text, limits.maxRows);
     } catch (cause) {
       // 中断の依頼が DB に届き終わるまで待ってから、エラーの種類を決める
-      await request.finishStatement();
+      await finish();
       return err(toDbError(cause, errorContext()));
     }
-    await request.finishStatement();
+    await finish();
     const elapsedMs = Math.round(performance.now() - startedAt);
 
     if (result.fields.length === 0) {
@@ -294,12 +319,21 @@ export const postgresAdapter = (pool: Pool, options: PostgresAdapterOptions = {}
 
       return runGated(gate, limits, async () => {
         const request = inFlight.begin(queryId);
+        if (request === null) return err(queryError("This queryId is already running."));
         try {
           return await inTransaction(
             pool,
             { readOnly, statementTimeoutMs: limits.statementTimeoutMs, timeZone },
             timeoutContext(limits),
             (session) => runUserStatement(session, statement, request, limits),
+            {
+              // 接続待ちの間に中断が来たら、待つのをやめる
+              abortConnect: request.whenCancelRequested.then(
+                (): DbViewerError => ({
+                  kind: "cancelled",
+                }),
+              ),
+            },
           );
         } finally {
           request.end();
@@ -311,8 +345,20 @@ export const postgresAdapter = (pool: Pool, options: PostgresAdapterOptions = {}
       try {
         return ok({ cancelled: await inFlight.cancel(queryId) });
       } catch (cause) {
-        return err(toDbError(cause, NO_STATEMENT));
+        return err(toDbError(cause, noStatement));
       }
     },
   };
 };
+
+/**
+ * PostgreSQL のアダプター（03_サーバー §4）。pg の Pool を受け取る。
+ *
+ * - 1 回の依頼 = 1 つのトランザクション。利用者の SQL は 1 文だけを extended protocol で流す（R3、R4）
+ * - 型の変換は問い合わせごとに文字列のままにする。pg.types のグローバルな設定は変えない
+ * - 中断は Pool を通さない一時的な接続で pg_cancel_backend を呼ぶ。Pool を使い切っていても届く（R8）。
+ *   文を流している間だけ受け付け、終わった後の接続は止めない（R5）
+ * - 行数の上限は pg-cursor で maxRows + 1 行だけ読む（U4）
+ */
+export const postgresAdapter = (pool: Pool, options: PostgresAdapterOptions = {}): DbAdapter =>
+  createPostgresAdapter(pool, options, DEFAULT_INTERNALS);
