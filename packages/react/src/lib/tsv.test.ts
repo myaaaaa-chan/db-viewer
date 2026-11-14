@@ -11,7 +11,7 @@ describe("toTsv", () => {
     ).toBe("1\ta\n2\tb");
   });
 
-  it("NULL は空文字にし、列名は含めない（U5）", () => {
+  it("NULL は空文字にし、列名は含めない", () => {
     expect(toTsv([["1", null, "x"]])).toBe("1\t\tx");
   });
 

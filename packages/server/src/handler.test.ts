@@ -375,7 +375,7 @@ describe("createHandler: 設定", () => {
     },
   );
 
-  it("limits を省略するとき、設計書の既定値をアダプターに渡す", async () => {
+  it("limits を省略するとき、既定値をアダプターに渡す", async () => {
     const fetchRows = vi.fn<DbAdapter["fetchRows"]>(async () =>
       ok({ columns: [], rows: [], truncated: false, truncatedCells: [] }),
     );

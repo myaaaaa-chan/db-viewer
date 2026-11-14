@@ -97,7 +97,7 @@ const positionOf = (cause: DatabaseErrorLike, sent: SentSql | null): number | nu
 
 /**
  * ドライバが投げた例外を、利用者に見せてよいエラーにする（境界での変換）。
- * 接続先を含みうる接続エラーのメッセージは載せない（02 §7）。
+ * 接続先を含みうる接続エラーのメッセージは載せない。
  */
 export const toDbError = (cause: unknown, context: ErrorContext): DbViewerError => {
   if (cause instanceof SafeMessageError) return { kind: "internal", message: cause.message };

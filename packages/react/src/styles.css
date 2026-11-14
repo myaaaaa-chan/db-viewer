@@ -4,7 +4,7 @@
  * - 色・余白・フォント・角丸は --dbv-* の CSS 変数。利用者は .dbv-root の上で上書きできる。
  *   変数の定義は :where() で詳細度を 0 にしてあるので、.dbv-root { --dbv-accent: ... } だけで勝てる。
  * - テーマは .dbv-root[data-theme="system" | "light" | "dark"]。system は prefers-color-scheme に追従する。
- * - レイヤー（@layer）には入れない（docs/adr/011）。Tailwind v4 の utilities では上書きできないので、変数で上書きする。
+ * - レイヤー（@layer）には入れない。組み込み先のリセット CSS に崩されないようにするため。Tailwind v4 の utilities では上書きできないので、変数で上書きする。
  * - 色の値は UI デザイン「db-viewer UI デザイン」の定義ブロックをそのまま写したもの。
  */
 

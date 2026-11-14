@@ -303,7 +303,7 @@ describe.skipIf(skipReason !== null)(
         },
       },
       {
-        name: "実行を始める前の中断（接続待ち）は、文を送らずに cancelled を返す（R5）",
+        name: "実行を始める前の中断（接続待ち）は、文を送らずに cancelled を返す",
         run: async ({ open }) => {
           const env = await open();
           const pool = poolOn(env.schema, 1);
@@ -325,7 +325,7 @@ describe.skipIf(skipReason !== null)(
         },
       },
       {
-        name: "終わったクエリの中断は cancelled: false で、同じ接続の次のクエリを止めない（R5）",
+        name: "終わったクエリの中断は cancelled: false で、同じ接続の次のクエリを止めない",
         run: async ({ open }) => {
           const env = await open();
           const pool = poolOn(env.schema, 1);
@@ -432,7 +432,7 @@ describe.skipIf(skipReason !== null)(
         },
       },
       {
-        name: "R4: COMMIT; DELETE のように文を足しても、読み取り専用は破れない。データも変わらない",
+        name: "COMMIT; DELETE のように文を足しても、読み取り専用は破れない。データも変わらない",
         run: async ({ open }) => {
           const env = await open({ readOnly: true });
           for (const sql of [
@@ -447,7 +447,7 @@ describe.skipIf(skipReason !== null)(
         },
       },
       {
-        name: "R3: 1 文の蓋は DB 側の extended protocol。ドライバに複数の文を渡しても 42601 で拒否される",
+        name: "1 文の蓋は DB 側の extended protocol。ドライバに複数の文を渡しても 42601 で拒否される",
         run: async ({ open }) => {
           const env = await open();
           await env.exec("CREATE TABLE victim (id integer)");
@@ -488,7 +488,7 @@ describe.skipIf(skipReason !== null)(
         },
       },
       {
-        name: "R4: SET TRANSACTION READ WRITE を流した後でも、次の依頼の書き込みは拒否される（同じ接続で）",
+        name: "SET TRANSACTION READ WRITE を流した後でも、次の依頼の書き込みは拒否される（同じ接続で）",
         run: async ({ open }) => {
           const env = await open();
           await env.exec("CREATE SEQUENCE vseq");

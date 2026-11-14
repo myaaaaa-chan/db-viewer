@@ -5,7 +5,7 @@ type DialectSyntax = {
   readonly placeholder: (position: number) => string;
   // LIKE の左辺。PostgreSQL は数値などの列にも使えるよう text にキャストする
   readonly likeOperand: (columnSql: string) => string;
-  // 1 セルを maxCellChars + 1 文字までに切って取る式（02 §3.1）。超えたかどうかの判定は呼び出し側が行う
+  // 1 セルを maxCellChars + 1 文字までに切って取る式。超えたかどうかの判定は呼び出し側が行う
   readonly truncatedCell: (columnSql: string, maxCellChars: number) => string;
   // 切り詰めずに値全体を取る式
   readonly fullCell: (columnSql: string) => string;

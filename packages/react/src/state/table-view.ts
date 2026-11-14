@@ -13,7 +13,7 @@ import { map } from "@myaaaaa_chan/db-viewer-core";
 import type { CellPos } from "./grid-selection";
 import { idle, type Remote, request, settle } from "./remote";
 
-// U1: 1 ページの件数
+// 1 ページの件数
 export const PAGE_SIZE = 100;
 
 export type DetailTab = "rows" | "columns" | "indexes" | "foreignKeys" | "ddl";

@@ -40,7 +40,7 @@ import { createTypeNameCache, type TypeField } from "./type-names";
 
 /**
  * postgresAdapter が受け取る Pool の、型として要る分だけ。pg.Pool がそのまま渡せる。
- * 公開する型に "pg" を出さないための型（ADR 010 §3）。pg と @types/pg を入れない SQLite だけの利用者が、
+ * 公開する型に "pg" を出さないための型。pg と @types/pg を入れない SQLite だけの利用者が、
  * skipLibCheck: false の型検査で落ちないようにする。
  */
 export type PostgresPool = {
@@ -51,7 +51,7 @@ export type PostgresPool = {
 export type PostgresAdapterOptions = {
   // 初期値 true。BEGIN READ ONLY で書き込みを止める。
   readonly readOnly?: boolean;
-  // 例: "Asia/Tokyo"。指定したときだけ、実行のたびに SET LOCAL TimeZone を発行する（02 §3.2）
+  // 例: "Asia/Tokyo"。指定したときだけ、実行のたびに SET LOCAL TimeZone を発行する
   readonly timeZone?: string;
 };
 
@@ -94,7 +94,7 @@ const columnsOf = async (
 ): Promise<ReadonlyArray<ColumnRow>> =>
   (await queryRows(client, CATALOG_SQL.columns, [relation.oid])).rows.map(columnRowFromRow);
 
-// format_type に渡して、結果の列の型名にする（03 §4 型名）
+// format_type に渡して、結果の列の型名にする
 const lookupTypeNames = async (
   client: PoolClient,
   missing: ReadonlyArray<TypeField>,
@@ -364,11 +364,11 @@ export const createPostgresAdapter = (
 /**
  * PostgreSQL のアダプター（03_サーバー §4）。pg の Pool を受け取る。
  *
- * - 1 回の依頼 = 1 つのトランザクション。利用者の SQL は 1 文だけを extended protocol で流す（R3、R4）
+ * - 1 回の依頼 = 1 つのトランザクション。利用者の SQL は 1 文だけを extended protocol で流す
  * - 型の変換は問い合わせごとに文字列のままにする。pg.types のグローバルな設定は変えない
- * - 中断は Pool を通さない一時的な接続で pg_cancel_backend を呼ぶ。Pool を使い切っていても届く（R8）。
- *   文を流している間だけ受け付け、終わった後の接続は止めない（R5）
- * - 行数の上限は pg-cursor で maxRows + 1 行だけ読む（U4）
+ * - 中断は Pool を通さない一時的な接続で pg_cancel_backend を呼ぶ。Pool を使い切っていても届く。
+ *   文を流している間だけ受け付け、終わった後の接続は止めない
+ * - 行数の上限は pg-cursor で maxRows + 1 行だけ読む
  */
 export const postgresAdapter = (
   pool: PostgresPool,

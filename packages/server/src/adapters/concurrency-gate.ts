@@ -3,7 +3,7 @@ import type { Limits } from "../limits";
 
 export type Release = () => void;
 
-// 接続ごと（アダプターごと）に 1 つ持つ。実行中のクエリの数を数えるだけで、待たせない（ADR 002 §5）。
+// 接続ごと（アダプターごと）に 1 つ持つ。実行中のクエリの数を数えるだけで、待たせない。
 export const createConcurrencyGate = () => {
   let active = 0;
   return {

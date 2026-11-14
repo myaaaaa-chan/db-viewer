@@ -145,7 +145,7 @@ export const executeCases = (harness: AdapterHarness, { open, limits }: SuiteCon
       expect(tables.map((t) => t.ref.name)).not.toContain("evil");
     });
 
-    it("読み取り専用を解除しようとした後でも、次の書き込みは拒否される（R4）", async () => {
+    it("読み取り専用を解除しようとした後でも、次の書き込みは拒否される", async () => {
       for (const attempt of sql.readOnlyEscapes) {
         const env = await open({ readOnly: true });
         await env.adapter.execute(attempt, nextQueryId(), limits());

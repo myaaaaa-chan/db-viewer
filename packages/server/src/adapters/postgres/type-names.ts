@@ -1,4 +1,4 @@
-// 結果の列の型は、DB が返す（dataTypeID, dataTypeModifier）を format_type に渡して名前にする（03 §4 型名）。
+// 結果の列の型は、DB が返す（dataTypeID, dataTypeModifier）を format_type に渡して名前にする。
 // 同じ組は同じ名前なので、アダプターごとに覚えておき、見たことのない組だけ DB に尋ねる。
 export type TypeField = {
   readonly dataTypeID: number;

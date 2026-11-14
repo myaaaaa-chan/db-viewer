@@ -16,7 +16,7 @@ const open = (seed: ReadonlyArray<string> = []) => {
 };
 
 describe("sqliteAdapter: 宣言", () => {
-  it("読み取り専用が初期値。タイムアウトの強制と中断は宣言しない（R1）", () => {
+  it("読み取り専用が初期値。タイムアウトの強制と中断は宣言しない", () => {
     const adapter = sqliteAdapter(open());
     expect(adapter.dialect).toBe("sqlite");
     expect(adapter.readOnly).toBe(true);
@@ -33,7 +33,7 @@ describe("sqliteAdapter: 宣言", () => {
   });
 });
 
-describe("sqliteAdapter: 渡されたインスタンスをアプリと共有する（R2）", () => {
+describe("sqliteAdapter: 渡されたインスタンスをアプリと共有する", () => {
   it("読み取り専用のアダプターを使った後も、アプリ自身の書き込みは止まらない", async () => {
     const db = open(["CREATE TABLE t (a)"]);
     const adapter = sqliteAdapter(db, { readOnly: true });

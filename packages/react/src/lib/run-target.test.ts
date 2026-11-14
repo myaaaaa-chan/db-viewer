@@ -16,7 +16,7 @@ describe("resolveRunTarget", () => {
     ).toBeNull();
   });
 
-  it("選択範囲が 1 文なら、その選択範囲を実行する（U6）", () => {
+  it("選択範囲が 1 文なら、その選択範囲を実行する", () => {
     expect(
       resolveRunTarget({ text: sql, selection: { anchor: 0, head: 9 }, dialect: "postgres" }),
     ).toEqual({ from: 0, to: 8, text: "SELECT 1" });

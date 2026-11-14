@@ -1,7 +1,7 @@
 import type { ResultColumn } from "@myaaaaa_chan/db-viewer-core";
 
 /*
- * U7: アダプターが受け取る SQLite ドライバの型。
+ * アダプターが受け取る SQLite ドライバの型。
  *
  * better-sqlite3 / node:sqlite / bun:sqlite の 3 つを実際に動かして比べた結果（2026-11-14）、
  * 3 つに共通で、同じ意味で使えるのは次のものだけだった。

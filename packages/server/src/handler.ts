@@ -15,7 +15,7 @@ import { type Limits, resolveLimits } from "./limits";
 export type HandlerOptions = {
   // キーが ConnectionName になる
   readonly connections: Readonly<Record<string, DbAdapter>>;
-  // 必須。全員に許可したい場合は () => true と明示的に書く（ADR 002）
+  // 必須。全員に許可したい場合は () => true と明示的に書く
   readonly authorize: (request: Request) => boolean | Promise<boolean>;
   readonly limits?: Partial<Limits>;
 };
@@ -48,7 +48,7 @@ const isJsonContentType = (request: Request): boolean => {
   return mediaType === "application/json";
 };
 
-// 入口で 1 回だけ検証する。ここを通った後は型を信頼する（01 §3）。
+// 入口で 1 回だけ検証する。ここを通った後は型を信頼する。
 const parseRequest = async (request: Request): Promise<DbResult<RpcRequest>> => {
   if (!isJsonContentType(request)) {
     return err(invalidRequest("Content-Type must be application/json."));
@@ -120,9 +120,11 @@ const assertNever = (value: never): never => {
  */
 export const createHandler = (options: HandlerOptions): Handler => {
   // JavaScript の利用者が authorize を忘れると、型の検査は効かない。全員通すか全員断るかが
-  // 実行時まで決まらないので、作成時に止める（ADR 002）
+  // 実行時まで決まらないので、作成時に止める
   if (typeof options.authorize !== "function") {
-    throw new TypeError("createHandler: authorize must be a function (ADR 002).");
+    throw new TypeError(
+      "createHandler: authorize must be a function. Pass () => true to allow every request.",
+    );
   }
   const limits = resolveLimits(options.limits);
   // 作成時に写して、Object.prototype の名前（constructor など）が接続名として通らないようにする

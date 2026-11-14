@@ -9,7 +9,7 @@ export type EditorSelection = { readonly anchor: number; readonly head: number }
 
 // Cmd/Ctrl+Enter で実行する範囲を決める。
 // - 選択がなければ、カーソル位置の 1 文
-// - 選択範囲が 1 文なら、その範囲（U6）
+// - 選択範囲が 1 文なら、その範囲
 // - 複数の文にまたがる選択は、サーバーが multipleStatements で断るので、選択をそのまま返す
 export const resolveRunTarget = (input: {
   readonly text: string;

@@ -6,7 +6,7 @@ import {
   tableName,
 } from "@myaaaaa_chan/db-viewer-core";
 
-// SQLite のスキーマは main だけを扱う（02 §2）。
+// SQLite のスキーマは main だけを扱う。
 export const MAIN_SCHEMA = schemaName("main");
 
 // 内部のテーブル（sqlite_sequence など）は PostgreSQL のシステムスキーマと同じく一覧に出さない。

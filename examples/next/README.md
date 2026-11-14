@@ -1,7 +1,7 @@
 # examples/next
 
 Next.js App Router. `app/admin/db/route.ts` exports the handler as `POST`, and `app/admin/viewer.tsx` is a `"use client"` component that renders `<DbViewer>` and imports `styles.css`.
-CI builds this example to check the RSC setup (design risk R7).
+CI builds this example to check that `"use client"` and the CSS import work with React Server Components.
 
 ```sh
 pnpm build                          # at the repository root, builds the packages first

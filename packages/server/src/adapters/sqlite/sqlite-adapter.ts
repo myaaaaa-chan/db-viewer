@@ -85,9 +85,9 @@ const toCells = (opened: OpenedStatement, rows: ReadonlyArray<Row>) =>
 /**
  * SQLite のアダプター。better-sqlite3 / node:sqlite / bun:sqlite のインスタンスを受け取る（driver.ts）。
  *
- * - タイムアウトは強制しない（R1）。ドライバに割り込む手段がなく、重いクエリはその間このプロセスを止める
+ * - タイムアウトは強制しない。ドライバに割り込む手段がなく、重いクエリはその間このプロセスを止める
  * - 中断には対応しない
- * - 読み取り専用は、実行のたびに PRAGMA query_only を ON にして、終わったら元の値に戻す（R2）。
+ * - 読み取り専用は、実行のたびに PRAGMA query_only を ON にして、終わったら元の値に戻す。
  *   渡したインスタンスをアプリが自分でも使っていても、アプリの書き込みを止めない。
  *   実行した SQL が query_only を OFF にしても、次の実行はまた ON から始まる
  */

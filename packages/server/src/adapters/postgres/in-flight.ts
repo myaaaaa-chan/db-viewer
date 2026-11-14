@@ -1,7 +1,7 @@
 import type { QueryId } from "@myaaaaa_chan/db-viewer-core";
 import { CancelTimeoutError } from "./errors";
 
-// 実行の段階。中断が DB に届くのは running の間だけ（R5）。pid が分かるのも running のときだけにして、
+// 実行の段階。中断が DB に届くのは running の間だけ。pid が分かるのも running のときだけにして、
 // pid のない running を作れないようにする。
 // - preparing: 接続を待っている間と、BEGIN などの準備の間。まだ文を送っていないので、DB には何も送らない
 // - running: 利用者の文を送ってから、結果が返るまで
@@ -48,9 +48,9 @@ export type InFlightOptions = {
 };
 
 /**
- * queryId と、そのクエリを流している接続の backend pid を組にして覚える（03 §4 中断、ADR 002 §5）。
+ * queryId と、そのクエリを流している接続の backend pid を組にして覚える。
  * 中断の対象は、段階が running の間だけ。終わったクエリの pid に依頼を送ると、同じ接続で次に始まった
- * 別のクエリを止めてしまうため（R5）。
+ * 別のクエリを止めてしまうため。
  *
  * DB への依頼の送り方は deliver に任せる（Pool を通さない接続で pg_cancel_backend を呼ぶ）。
  */

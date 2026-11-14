@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
 
-# Trusted Publishing（OIDC）で公開する。npm のトークンは置かない（ADR 007）。
+# Trusted Publishing（OIDC）で公開する。長期間有効な npm のトークンを置かずに済むため、トークンは置かない。
 permissions:
   contents: write
   pull-requests: write

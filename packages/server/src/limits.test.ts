@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_LIMITS, resolveLimits } from "./limits";
 
 describe("resolveLimits", () => {
-  it("指定がなければ設計書の既定値になる", () => {
+  it("指定がなければ既定値になる", () => {
     expect(resolveLimits()).toEqual({
       maxRows: 1000,
       statementTimeoutMs: 30_000,

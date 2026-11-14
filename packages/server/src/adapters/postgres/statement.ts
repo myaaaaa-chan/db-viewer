@@ -2,7 +2,7 @@ import type { CustomTypesConfig, FieldDef, QueryArrayConfig } from "pg";
 import type Cursor from "pg-cursor";
 import { connectionSurvives, UnsupportedStatementError } from "./errors";
 
-// 値は DB が出力した文字列のまま受け取る（02 §3）。型の変換は問い合わせごとの指定だけで変え、
+// 値は DB が出力した文字列のまま受け取る。型の変換は問い合わせごとの指定だけで変え、
 // pg.types のグローバルな設定には触れない（同じプロセスの ORM などの動きを変えないため。03 §4）。
 export const TEXT_TYPES: CustomTypesConfig = { getTypeParser: () => (value: string) => value };
 
@@ -31,7 +31,7 @@ type Queryable = {
 
 /**
  * 1 文を extended protocol（Parse / Bind / Execute）で送る。複数の文を含む SQL は、DB が 42601 で拒否する。
- * values: [] だけでは simple protocol で送られ、"COMMIT; DELETE ..." が通ってしまう（R3）。
+ * values: [] だけでは simple protocol で送られ、"COMMIT; DELETE ..." が通ってしまう。
  *
  * 結果を全部受け取る。行数が小さいと分かっているものに使う（カタログ、LIMIT をつけて組み立てた SQL）。
  */
@@ -74,7 +74,7 @@ const cursorWithoutCopy = (CursorClass: typeof Cursor) =>
 /**
  * 利用者の SQL 1 文を、カーソルで最大 maxRows + 1 行だけ読む。超えた分は DB が作らない
  * （数百万行の結果をプロセスのメモリに載せない）。maxRows を超えて読めたかで打ち切りが分かる。
- * Cursor も extended protocol なので、複数の文は 42601 で拒否される（R3）。
+ * Cursor も extended protocol なので、複数の文は 42601 で拒否される。
  */
 export const readStatement = async (
   client: { readonly query: <T extends Cursor<Array<Cell>>>(cursor: T) => T },

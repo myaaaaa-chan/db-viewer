@@ -71,12 +71,12 @@ const connect = async (pool: Pool, hooks: TransactionHooks): Promise<Connected> 
 };
 
 /**
- * 1 回の依頼 = 1 つのトランザクション（03 §4 読み取り専用）。
+ * 1 回の依頼 = 1 つのトランザクション。
  * BEGIN READ ONLY（書き込み可なら BEGIN）→ SET LOCAL statement_timeout →（timeZone 指定時）
  * SET LOCAL TimeZone → work → ROLLBACK（書き込み可で work が成功したときだけ COMMIT）。
  *
  * work の中で利用者の SQL を流すのは 1 文まで。同じトランザクションで 2 本流すと、1 本目の
- * SET TRANSACTION READ WRITE で読み取り専用を外せる（R4）。
+ * SET TRANSACTION READ WRITE で読み取り専用を外せる。
  *
  * 接続が壊れたかもしれないときは、Pool に戻さず捨てる。
  */

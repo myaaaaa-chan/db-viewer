@@ -17,7 +17,7 @@ import type {
 import type { Limits } from "./limits";
 
 // core の ConnectionInfo と同じもの。handler が listConnections でそのまま返す。
-// enforcesTimeout が false の接続（SQLite は R1 のため false）では、重いクエリがタイムアウトせず、
+// enforcesTimeout が false の接続（SQLite はドライバに割り込む手段がないため false）では、重いクエリがタイムアウトせず、
 // そのプロセスの処理を止め続ける
 export type AdapterCapabilities = ConnectionInfo["capabilities"];
 

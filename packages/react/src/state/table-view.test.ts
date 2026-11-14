@@ -55,7 +55,7 @@ describe("nextSort", () => {
 });
 
 describe("rowsQueryOf", () => {
-  it("1 ページ 100 件で、ページ番号から offset を決める（U1）", () => {
+  it("1 ページ 100 件で、ページ番号から offset を決める", () => {
     expect(PAGE_SIZE).toBe(100);
     const state = run([
       { type: "pageMoved", delta: 1 },

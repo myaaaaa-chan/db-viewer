@@ -78,7 +78,7 @@ describe("createInFlightRegistry: 中断の依頼", () => {
   });
 });
 
-describe("createInFlightRegistry: 文を送る前（R5）", () => {
+describe("createInFlightRegistry: 文を送る前", () => {
   it("接続を待っている間・準備の間の中断は、DB には送らず、文を送らないことにする", async () => {
     const deliver = vi.fn(async () => true);
     const registry = registryOf(deliver);
@@ -114,7 +114,7 @@ describe("createInFlightRegistry: 文を送る前（R5）", () => {
   });
 });
 
-describe("createInFlightRegistry: 文が終わった後（R5）", () => {
+describe("createInFlightRegistry: 文が終わった後", () => {
   it("文が終わってからの中断は、同じ接続の次のクエリを止めないよう、DB に送らない", async () => {
     const deliver = vi.fn(async () => true);
     const registry = registryOf(deliver);

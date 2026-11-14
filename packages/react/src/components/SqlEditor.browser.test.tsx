@@ -82,7 +82,7 @@ describe("SQL の実行", () => {
     expect(executeQuery.mock.calls[0]?.[1]).toBe("SELECT 1");
   });
 
-  it("選択範囲が 1 文なら、カーソルの位置に関わらず選択範囲を実行する（U6）", async () => {
+  it("選択範囲が 1 文なら、カーソルの位置に関わらず選択範囲を実行する", async () => {
     const dataSource = createDataSource();
     const executeQuery = vi.spyOn(dataSource, "executeQuery");
     const screen = await openSql(dataSource);

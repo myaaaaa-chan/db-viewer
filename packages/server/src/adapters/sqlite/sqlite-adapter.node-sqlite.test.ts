@@ -11,7 +11,7 @@ type NodeSqlite = {
 const specifier = "node:sqlite";
 const nodeSqlite = (await import(specifier).catch(() => null)) as NodeSqlite | null;
 
-// 列の名前を返す columns() は Node 22.16 から。それより前の node:sqlite は README で対象外にしている（R9）。
+// 列の名前を返す columns() は Node 22.16 から。それより前の node:sqlite は README で対象外にしている。
 const supported =
   nodeSqlite !== null &&
   typeof new nodeSqlite.DatabaseSync(":memory:").prepare("SELECT 1").columns === "function";
