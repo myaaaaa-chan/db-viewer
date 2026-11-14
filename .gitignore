@@ -8,3 +8,4 @@ coverage
 .env.*
 *.log
 __screenshots__
+.vitest-attachments
