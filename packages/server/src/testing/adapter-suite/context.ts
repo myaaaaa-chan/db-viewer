@@ -34,12 +34,12 @@ export const rowsQuery = (
 });
 
 // 失敗なら、失敗の中身を載せて落とす。テストの出力から原因が分かるようにする。
-export const valueOf = <T>(result: DbResult<T>): T => {
+export const okValue = <T>(result: DbResult<T>): T => {
   if (!result.ok) throw new Error(`expected ok but got ${JSON.stringify(result.error)}`);
   return result.value;
 };
 
-export const errorOf = <T>(result: DbResult<T>) => {
+export const errorValue = <T>(result: DbResult<T>) => {
   if (result.ok) throw new Error(`expected an error but got ${JSON.stringify(result.value)}`);
   return result.error;
 };

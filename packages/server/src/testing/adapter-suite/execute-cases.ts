@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { errorOf, nextQueryId, refOf, rowsQuery, type SuiteContext, valueOf } from "./context";
+import { errorValue, nextQueryId, okValue, refOf, rowsQuery, type SuiteContext } from "./context";
 import type { AdapterHarness } from "./harness";
 import { sqlFor } from "./seed";
 
 type Env = Awaited<ReturnType<SuiteContext["open"]>>;
 
 const rowsOf = async (env: Env, sql: string, overrides = {}, limits: SuiteContext["limits"]) => {
-  const outcome = valueOf(await env.adapter.execute(sql, nextQueryId(), limits(overrides)));
+  const outcome = okValue(await env.adapter.execute(sql, nextQueryId(), limits(overrides)));
   if (outcome.kind !== "rows") throw new Error(`expected rows but got ${outcome.kind}`);
   return outcome;
 };
 
 const userCount = async (env: Env, limits: SuiteContext["limits"]) =>
-  valueOf(await env.adapter.countRows(refOf(env, "users"), [], null, limits())).count;
+  okValue(await env.adapter.countRows(refOf(env, "users"), [], null, limits())).count;
 
 export const executeCases = (harness: AdapterHarness, { open, limits }: SuiteContext) => {
   const sql = sqlFor(harness.dialect);
@@ -99,7 +99,7 @@ export const executeCases = (harness: AdapterHarness, { open, limits }: SuiteCon
   describe("execute: 失敗の種類", () => {
     it("構文エラーと実行時のエラーは query。DB のメッセージとコードをそのまま持つ", async () => {
       const env = await open();
-      const syntax = errorOf(await env.adapter.execute("SELEC 1", nextQueryId(), limits()));
+      const syntax = errorValue(await env.adapter.execute("SELEC 1", nextQueryId(), limits()));
       expect(syntax.kind).toBe("query");
       if (syntax.kind !== "query") return;
       expect(syntax.message.length).toBeGreaterThan(0);
@@ -110,7 +110,7 @@ export const executeCases = (harness: AdapterHarness, { open, limits }: SuiteCon
         nextQueryId(),
         limits(),
       );
-      expect(errorOf(runtime).kind).toBe("query");
+      expect(errorValue(runtime).kind).toBe("query");
     });
 
     it("2 文以上は multipleStatements。後ろの文は実行されない", async () => {
@@ -120,10 +120,10 @@ export const executeCases = (harness: AdapterHarness, { open, limits }: SuiteCon
         nextQueryId(),
         limits(),
       );
-      expect(errorOf(result)).toEqual({ kind: "multipleStatements" });
+      expect(errorValue(result)).toEqual({ kind: "multipleStatements" });
       expect(await userCount(env, limits)).toBe("3");
       const two = await env.adapter.execute("SELECT 1; SELECT 2", nextQueryId(), limits());
-      expect(errorOf(two)).toEqual({ kind: "multipleStatements" });
+      expect(errorValue(two)).toEqual({ kind: "multipleStatements" });
     });
   });
 
@@ -138,19 +138,19 @@ export const executeCases = (harness: AdapterHarness, { open, limits }: SuiteCon
       const env = await open({ readOnly: true });
       expect(env.adapter.readOnly).toBe(true);
       const result = await env.adapter.execute(statement, nextQueryId(), limits());
-      expect(errorOf(result).kind).toBe("readOnlyViolation");
+      expect(errorValue(result).kind).toBe("readOnlyViolation");
       expect(await userCount(env, limits)).toBe("3");
-      const tables = valueOf(await env.adapter.listTables(env.schema));
+      const tables = okValue(await env.adapter.listTables(env.schema));
       expect(tables.map((t) => t.ref.name)).toContain("no_pk");
       expect(tables.map((t) => t.ref.name)).not.toContain("evil");
     });
 
     it("読み取り専用を解除しようとした後でも、次の書き込みは拒否される（R4）", async () => {
-      for (const escape of sql.readOnlyEscapes) {
+      for (const attempt of sql.readOnlyEscapes) {
         const env = await open({ readOnly: true });
-        await env.adapter.execute(escape, nextQueryId(), limits());
+        await env.adapter.execute(attempt, nextQueryId(), limits());
         const write = await env.adapter.execute("DELETE FROM users", nextQueryId(), limits());
-        expect(errorOf(write).kind, escape).toBe("readOnlyViolation");
+        expect(errorValue(write).kind, attempt).toBe("readOnlyViolation");
         expect(await userCount(env, limits)).toBe("3");
       }
     });
@@ -171,7 +171,7 @@ export const executeCases = (harness: AdapterHarness, { open, limits }: SuiteCon
       const env = await open({ readOnly: false });
       expect(env.adapter.readOnly).toBe(false);
       const run = async (statement: string) =>
-        valueOf(await env.adapter.execute(statement, nextQueryId(), limits()));
+        okValue(await env.adapter.execute(statement, nextQueryId(), limits()));
 
       const inserted = await run("INSERT INTO users (id, name) VALUES (10, 'dave')");
       expect(inserted).toMatchObject({ kind: "command", affectedRows: 1 });
@@ -187,13 +187,13 @@ export const executeCases = (harness: AdapterHarness, { open, limits }: SuiteCon
     it("DDL は command。影響した行数は 0 か null（古い値を引きずらない）", async () => {
       const env = await open({ readOnly: false });
       await env.adapter.execute("UPDATE users SET status = status", nextQueryId(), limits());
-      const created = valueOf(
+      const created = okValue(
         await env.adapter.execute("CREATE TABLE created (a TEXT)", nextQueryId(), limits()),
       );
       expect(created.kind).toBe("command");
       if (created.kind !== "command") return;
       expect([0, null]).toContain(created.affectedRows);
-      expect(valueOf(await env.adapter.listTables(env.schema)).map((t) => t.ref.name)).toContain(
+      expect(okValue(await env.adapter.listTables(env.schema)).map((t) => t.ref.name)).toContain(
         "created",
       );
     });
@@ -244,9 +244,9 @@ export const executeCases = (harness: AdapterHarness, { open, limits }: SuiteCon
       const env = await open();
       const result = await env.adapter.cancel(nextQueryId());
       if (harness.expectedCapabilities.cancel) {
-        expect(valueOf(result)).toEqual({ cancelled: false });
+        expect(okValue(result)).toEqual({ cancelled: false });
       } else {
-        expect(errorOf(result)).toEqual({ kind: "unsupported", feature: "cancel" });
+        expect(errorValue(result)).toEqual({ kind: "unsupported", feature: "cancel" });
       }
     });
 
@@ -260,7 +260,7 @@ export const executeCases = (harness: AdapterHarness, { open, limits }: SuiteCon
           nextQueryId(),
           limits({ statementTimeoutMs: 200 }),
         );
-        expect(errorOf(result)).toEqual({ kind: "timeout", timeoutMs: 200 });
+        expect(errorValue(result)).toEqual({ kind: "timeout", timeoutMs: 200 });
       },
     );
   });

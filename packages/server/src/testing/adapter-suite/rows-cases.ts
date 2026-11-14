@@ -1,6 +1,6 @@
 import { columnName, type Filter } from "@myaaaaa_chan/db-viewer-core";
 import { describe, expect, it } from "vitest";
-import { errorOf, refOf, rowsQuery, type SuiteContext, valueOf } from "./context";
+import { errorValue, okValue, refOf, rowsQuery, type SuiteContext } from "./context";
 
 const eq = (column: string, value: string): Filter => ({
   column: columnName(column),
@@ -14,7 +14,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
   describe("fetchRows", () => {
     it("列の名前と型、行は列の並びの配列、値は文字列。NULL と空文字を区別する", async () => {
       const env = await open();
-      const result = valueOf(
+      const result = okValue(
         await env.adapter.fetchRows(rowsQuery(env, "users", { sort: byId }), limits()),
       );
       expect(result.columns.map((c) => c.name)).toEqual(["id", "name", "email", "age", "status"]);
@@ -47,7 +47,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
       ],
     ] as const)("構造化フィルタ %s", async (_name, filters, expectedIds) => {
       const env = await open();
-      const result = valueOf(
+      const result = okValue(
         await env.adapter.fetchRows(
           rowsQuery(env, "users", { filters: [...filters], sort: byId }),
           limits(),
@@ -59,7 +59,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
     it("フィルタの値は SQL として解釈されない", async () => {
       const env = await open();
       const hostile = eq("name", "x' OR '1'='1");
-      const result = valueOf(
+      const result = okValue(
         await env.adapter.fetchRows(rowsQuery(env, "users", { filters: [hostile] }), limits()),
       );
       expect(result.rows).toEqual([]);
@@ -67,7 +67,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
 
     it("rawWhere は構造化フィルタと AND で結合される。行コメントで終わっても動く", async () => {
       const env = await open();
-      const both = valueOf(
+      const both = okValue(
         await env.adapter.fetchRows(
           rowsQuery(env, "users", {
             filters: [eq("status", "active")],
@@ -78,7 +78,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
         ),
       );
       expect(idsOf(both.rows)).toEqual(["3"]);
-      const rawOnly = valueOf(
+      const rawOnly = okValue(
         await env.adapter.fetchRows(
           rowsQuery(env, "users", { rawWhere: "id = 1 OR id = 2", sort: byId }),
           limits(),
@@ -93,8 +93,8 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
         rowsQuery(env, "users", { rawWhere: "1 = 1); DELETE FROM users; --" }),
         limits(),
       );
-      expect(errorOf(result)).toEqual({ kind: "multipleStatements" });
-      const after = valueOf(await env.adapter.fetchRows(rowsQuery(env, "users"), limits()));
+      expect(errorValue(result)).toEqual({ kind: "multipleStatements" });
+      const after = okValue(await env.adapter.fetchRows(rowsQuery(env, "users"), limits()));
       expect(after.rows).toHaveLength(3);
     });
 
@@ -104,19 +104,19 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
         rowsQuery(env, "users", { rawWhere: "age >>> 1" }),
         limits(),
       );
-      expect(errorOf(result).kind).toBe("query");
+      expect(errorValue(result).kind).toBe("query");
     });
 
     it("並べ替えとページング", async () => {
       const env = await open();
-      const desc = valueOf(
+      const desc = okValue(
         await env.adapter.fetchRows(
           rowsQuery(env, "users", { sort: { column: columnName("id"), direction: "desc" } }),
           limits(),
         ),
       );
       expect(idsOf(desc.rows)).toEqual(["3", "2", "1"]);
-      const page = valueOf(
+      const page = okValue(
         await env.adapter.fetchRows(
           rowsQuery(env, "users", { sort: byId, limit: 2, offset: 1 }),
           limits(),
@@ -129,7 +129,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
     it("truncated は、返さなかった行がまだある場合だけ true。上限は min(limit, maxRows)", async () => {
       const env = await open();
       const fetch = async (limit: number, maxRows: number) =>
-        valueOf(
+        okValue(
           await env.adapter.fetchRows(
             rowsQuery(env, "many", { sort: byId, limit }),
             limits({ maxRows }),
@@ -155,7 +155,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
 
     it("maxCellChars を超えたセルを切り詰め、位置を truncatedCells に入れる（コードポイントで数える）", async () => {
       const env = await open();
-      const result = valueOf(
+      const result = okValue(
         await env.adapter.fetchRows(
           rowsQuery(env, "docs", { sort: byId }),
           limits({ maxCellChars: 10 }),
@@ -174,7 +174,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
         [2, 1],
       ]);
 
-      const emoji = valueOf(
+      const emoji = okValue(
         await env.adapter.fetchRows(
           rowsQuery(env, "docs", { filters: [eq("id", "4")] }),
           limits({ maxCellChars: 3 }),
@@ -186,7 +186,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
 
     it("bigint は精度を落とさず 10 進の文字列で返す", async () => {
       const env = await open();
-      const result = valueOf(
+      const result = okValue(
         await env.adapter.fetchRows(rowsQuery(env, "numbers", { sort: byId }), limits()),
       );
       expect(result.rows).toEqual([
@@ -198,12 +198,12 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
 
     it("バイナリは \\x の 16 進。切り詰めの規則は文字列と同じ", async () => {
       const env = await open();
-      const full = valueOf(
+      const full = okValue(
         await env.adapter.fetchRows(rowsQuery(env, "blobs", { sort: byId }), limits()),
       );
       expect(full.rows.map((row) => row[1])).toEqual(["\\x0aff112233", "\\x", null]);
 
-      const cut = valueOf(
+      const cut = okValue(
         await env.adapter.fetchRows(
           rowsQuery(env, "blobs", { sort: byId }),
           limits({ maxCellChars: 6 }),
@@ -215,7 +215,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
 
     it("引用符を含むテーブル名・列名でも動く（識別子は必ずクォートされる）", async () => {
       const env = await open();
-      const result = valueOf(
+      const result = okValue(
         await env.adapter.fetchRows(
           rowsQuery(env, 'odd"table', {
             filters: [{ column: columnName('col"x'), op: "eq", value: "1" }],
@@ -231,7 +231,7 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
     it("存在しないテーブルは tableNotFound", async () => {
       const env = await open();
       const result = await env.adapter.fetchRows(rowsQuery(env, "no_such_table"), limits());
-      expect(errorOf(result)).toEqual({
+      expect(errorValue(result)).toEqual({
         kind: "tableNotFound",
         table: refOf(env, "no_such_table"),
       });
@@ -243,14 +243,14 @@ export const fetchRowsCases = ({ open, limits }: SuiteContext) =>
         rowsQuery(env, "users", { filters: [eq("no_such_column", "x")] }),
         limits(),
       );
-      expect(errorOf(badFilter).kind).toBe("query");
+      expect(errorValue(badFilter).kind).toBe("query");
       const badSort = await env.adapter.fetchRows(
         rowsQuery(env, "users", {
           sort: { column: columnName("no_such_column"), direction: "asc" },
         }),
         limits(),
       );
-      expect(errorOf(badSort).kind).toBe("query");
+      expect(errorValue(badSort).kind).toBe("query");
     });
   });
 
@@ -262,7 +262,7 @@ export const countRowsCases = ({ open, limits }: SuiteContext) =>
         filters: ReadonlyArray<Filter>,
         rawWhere: string | null,
         table = "users",
-      ) => valueOf(await env.adapter.countRows(refOf(env, table), filters, rawWhere, limits()));
+      ) => okValue(await env.adapter.countRows(refOf(env, table), filters, rawWhere, limits()));
 
       expect(await count([], null)).toEqual({ count: "3" });
       expect(await count([eq("status", "active")], null)).toEqual({ count: "2" });
@@ -279,20 +279,20 @@ export const countRowsCases = ({ open, limits }: SuiteContext) =>
         null,
         limits(),
       );
-      expect(errorOf(result).kind).toBe("query");
+      expect(errorValue(result).kind).toBe("query");
     });
 
     it("存在しないテーブルは tableNotFound、複数の文は multipleStatements", async () => {
       const env = await open({ readOnly: false });
       const missing = await env.adapter.countRows(refOf(env, "no_such_table"), [], null, limits());
-      expect(errorOf(missing).kind).toBe("tableNotFound");
+      expect(errorValue(missing).kind).toBe("tableNotFound");
       const injected = await env.adapter.countRows(
         refOf(env, "users"),
         [],
         "1 = 1); DELETE FROM users; --",
         limits(),
       );
-      expect(errorOf(injected)).toEqual({ kind: "multipleStatements" });
+      expect(errorValue(injected)).toEqual({ kind: "multipleStatements" });
     });
   });
 
@@ -310,50 +310,52 @@ export const fetchCellCases = ({ open, limits }: SuiteContext) =>
     it("fetchRows で切り詰められる値も、全体を返す", async () => {
       const env = await open();
       const small = { maxCellChars: 10 };
-      expect(valueOf(await cell(env, "docs", { id: "1" }, "body", small))).toEqual({
+      expect(okValue(await cell(env, "docs", { id: "1" }, "body", small))).toEqual({
         value: "abcdefghijKLMNOP",
       });
-      expect(valueOf(await cell(env, "blobs", { id: "1" }, "data", { maxCellChars: 6 }))).toEqual({
+      expect(okValue(await cell(env, "blobs", { id: "1" }, "data", { maxCellChars: 6 }))).toEqual({
         value: "\\x0aff112233",
       });
     });
 
     it("NULL と空文字を区別し、bigint の精度を落とさない", async () => {
       const env = await open();
-      expect(valueOf(await cell(env, "docs", { id: "6" }, "body"))).toEqual({ value: null });
-      expect(valueOf(await cell(env, "docs", { id: "5" }, "body"))).toEqual({ value: "" });
-      expect(valueOf(await cell(env, "numbers", { id: "2" }, "big"))).toEqual({
+      expect(okValue(await cell(env, "docs", { id: "6" }, "body"))).toEqual({ value: null });
+      expect(okValue(await cell(env, "docs", { id: "5" }, "body"))).toEqual({ value: "" });
+      expect(okValue(await cell(env, "numbers", { id: "2" }, "big"))).toEqual({
         value: "9223372036854775807",
       });
     });
 
     it("複合主キーで 1 行を決める", async () => {
       const env = await open();
-      expect(valueOf(await cell(env, "composite", { a: "1", b: "y" }, "label"))).toEqual({
+      expect(okValue(await cell(env, "composite", { a: "1", b: "y" }, "label"))).toEqual({
         value: "one-y",
       });
     });
 
     it("主キーで 1 行に決まらない（0 行・2 行以上・主キーが空）場合は query エラー", async () => {
       const env = await open();
-      expect(errorOf(await cell(env, "docs", { id: "999" }, "body")).kind).toBe("query");
-      expect(errorOf(await cell(env, "no_pk", { v: "a" }, "v")).kind).toBe("query");
-      expect(errorOf(await cell(env, "docs", {}, "body")).kind).toBe("query");
+      expect(errorValue(await cell(env, "docs", { id: "999" }, "body")).kind).toBe("query");
+      expect(errorValue(await cell(env, "no_pk", { v: "a" }, "v")).kind).toBe("query");
+      expect(errorValue(await cell(env, "docs", {}, "body")).kind).toBe("query");
     });
 
     it("主キーが空なら、表に 1 行しかなくても query エラー（条件なしで読まない）", async () => {
       const env = await open();
       await env.exec("CREATE TABLE one_row (v TEXT)");
       await env.exec("INSERT INTO one_row (v) VALUES ('only')");
-      expect(errorOf(await cell(env, "one_row", {}, "v")).kind).toBe("query");
+      expect(errorValue(await cell(env, "one_row", {}, "v")).kind).toBe("query");
     });
 
     it("主キーの値は SQL として解釈されない。存在しない列・テーブルは失敗にする", async () => {
       const env = await open();
-      expect(errorOf(await cell(env, "docs", { id: "1 OR 1 = 1" }, "body")).kind).toBe("query");
-      expect(errorOf(await cell(env, "docs", { id: "1" }, "no_such_column")).kind).toBe("query");
-      expect(errorOf(await cell(env, "docs", { no_such_column: "1" }, "body")).kind).toBe("query");
-      expect(errorOf(await cell(env, "no_such_table", { id: "1" }, "body")).kind).toBe(
+      expect(errorValue(await cell(env, "docs", { id: "1 OR 1 = 1" }, "body")).kind).toBe("query");
+      expect(errorValue(await cell(env, "docs", { id: "1" }, "no_such_column")).kind).toBe("query");
+      expect(errorValue(await cell(env, "docs", { no_such_column: "1" }, "body")).kind).toBe(
+        "query",
+      );
+      expect(errorValue(await cell(env, "no_such_table", { id: "1" }, "body")).kind).toBe(
         "tableNotFound",
       );
     });
