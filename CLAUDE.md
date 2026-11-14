@@ -1,6 +1,6 @@
 # db-viewer
 
-## UI デザイン（Claude Design のキャンバス）
+## UI デザイン（Claude Design のキャンバス。URL は CLAUDE.local.md）
 
 - 修正する前に、キャンバスの `project/canvas.json` と、直す画面のファイルを読み直す（ほかの人が手で直している可能性がある）。
 - 画面の色は、すべて `--dbv-*` の CSS 変数で指定する。ライト・ダーク・`system`（OS の設定に追従）の 3 つの定義ブロックは各画面の `<helmet>` にある。色コードを一括で置き換えるときは、定義ブロックを対象から外す。
