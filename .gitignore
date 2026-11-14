@@ -13,5 +13,5 @@ __screenshots__
 next-env.d.ts
 tarballs
 
-docs/
-.audit/
+/docs/
+/.audit/
