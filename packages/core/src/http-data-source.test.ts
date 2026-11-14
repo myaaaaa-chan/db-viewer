@@ -190,7 +190,12 @@ describe("createHttpDataSource: リクエスト", () => {
 
 describe("createHttpDataSource: レスポンスの変換", () => {
   const connections: ReadonlyArray<ConnectionInfo> = [
-    { name: main, dialect: "postgres", readOnly: true, capabilities: { cancel: true } },
+    {
+      name: main,
+      dialect: "postgres",
+      readOnly: true,
+      capabilities: { cancel: true, enforcesTimeout: true },
+    },
   ];
 
   it("成功の応答は、値をそのまま ok で返す", async () => {

@@ -77,8 +77,7 @@ const connectionInfos = (
     name: connectionName(name),
     dialect: adapter.dialect,
     readOnly: adapter.readOnly,
-    // enforcesTimeout は ConnectionInfo（core の通信仕様）に含めない
-    capabilities: { cancel: adapter.capabilities.cancel },
+    capabilities: adapter.capabilities,
   }));
 
 type AdapterRequest = Exclude<RpcRequest, { readonly op: "listConnections" }>;

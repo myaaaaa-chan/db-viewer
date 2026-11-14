@@ -69,6 +69,8 @@ export type MemoryConnectionSpec = {
   readonly readOnly?: boolean;
   // 省略すると false
   readonly cancel?: boolean;
+  // 省略すると false
+  readonly enforcesTimeout?: boolean;
   readonly schemas: ReadonlyArray<{
     readonly name: string;
     readonly tables: ReadonlyArray<MemoryTable>;
@@ -285,7 +287,7 @@ const toConnection = (spec: MemoryConnectionSpec): Connection => ({
     name: connectionName(spec.name),
     dialect: spec.dialect,
     readOnly: spec.readOnly ?? true,
-    capabilities: { cancel: spec.cancel ?? false },
+    capabilities: { cancel: spec.cancel ?? false, enforcesTimeout: spec.enforcesTimeout ?? false },
   },
   schemas: new Map(spec.schemas.map((s) => [s.name, s.tables])),
   schemaNames: spec.schemas.map((s) => schemaName(s.name)),

@@ -1,6 +1,7 @@
 import type {
   CellValue,
   ColumnName,
+  ConnectionInfo,
   DbResult,
   Dialect,
   Filter,
@@ -15,13 +16,10 @@ import type {
 } from "@myaaaaa_chan/db-viewer-core";
 import type { Limits } from "./limits";
 
-export type AdapterCapabilities = {
-  // cancel() で実行中のクエリを止められるか。false なら cancel は unsupported を返す
-  readonly cancel: boolean;
-  // Limits.statementTimeoutMs を DB 側で強制できるか。false の接続では、重いクエリが
-  // タイムアウトせず、そのプロセスの処理を止め続ける（SQLite は R1 のため false）
-  readonly enforcesTimeout: boolean;
-};
+// core の ConnectionInfo と同じもの。handler が listConnections でそのまま返す。
+// enforcesTimeout が false の接続（SQLite は R1 のため false）では、重いクエリがタイムアウトせず、
+// そのプロセスの処理を止め続ける
+export type AdapterCapabilities = ConnectionInfo["capabilities"];
 
 /**
  * DB の方言の違いを吸収するアダプター（03_サーバー §3）。

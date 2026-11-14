@@ -143,7 +143,7 @@ describe("createHandler: 入口の検査", () => {
 });
 
 describe("createHandler: 接続の振り分け", () => {
-  it("listConnections は接続名・方言・readOnly・cancel の可否を返し、enforcesTimeout は載せない", async () => {
+  it("listConnections は接続名・方言・readOnly と、アダプターの capabilities をそのまま返す", async () => {
     const handler = createHandler({
       connections: {
         a: createFakeAdapter({ dialect: "sqlite", readOnly: true }),
@@ -160,8 +160,18 @@ describe("createHandler: 接続の振り分け", () => {
     expect(await jsonOf(response)).toEqual({
       ok: true,
       value: [
-        { name: "a", dialect: "sqlite", readOnly: true, capabilities: { cancel: false } },
-        { name: "b", dialect: "postgres", readOnly: false, capabilities: { cancel: true } },
+        {
+          name: "a",
+          dialect: "sqlite",
+          readOnly: true,
+          capabilities: { cancel: false, enforcesTimeout: false },
+        },
+        {
+          name: "b",
+          dialect: "postgres",
+          readOnly: false,
+          capabilities: { cancel: true, enforcesTimeout: true },
+        },
       ],
     });
   });

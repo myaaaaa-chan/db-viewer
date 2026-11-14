@@ -6,7 +6,12 @@ export type ConnectionInfo = {
   readonly name: ConnectionName;
   readonly dialect: Dialect;
   readonly readOnly: boolean;
-  readonly capabilities: { readonly cancel: boolean };
+  readonly capabilities: {
+    // 実行中のクエリを止められるか。false の接続では cancelQuery が unsupported を返す
+    readonly cancel: boolean;
+    // statementTimeoutMs を DB 側で強制できるか。false の接続（SQLite）では重いクエリが止まらない
+    readonly enforcesTimeout: boolean;
+  };
 };
 
 export type TableKind = "table" | "view";

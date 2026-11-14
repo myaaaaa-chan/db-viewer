@@ -55,7 +55,14 @@ describe("toNodeHandler", () => {
     const connections = await client.listConnections();
     expect(connections).toEqual({
       ok: true,
-      value: [{ name: "main", dialect: "sqlite", readOnly: true, capabilities: { cancel: false } }],
+      value: [
+        {
+          name: "main",
+          dialect: "sqlite",
+          readOnly: true,
+          capabilities: { cancel: false, enforcesTimeout: false },
+        },
+      ],
     });
 
     const outcome = await client.executeQuery(

@@ -59,6 +59,7 @@ const build = (options: Partial<Parameters<typeof createMemoryDataSource>[0]> = 
         dialect: "postgres",
         readOnly: true,
         cancel: true,
+        enforcesTimeout: true,
         schemas: [
           { name: "public", tables: [users, members, activeUsers] },
           { name: "empty", tables: [] },
@@ -93,10 +94,20 @@ const idsOf = async (
 };
 
 describe("メタデータ", () => {
-  it("接続の一覧は、方言・読み取り専用・中断の可否を返す", async () => {
+  it("接続の一覧は、方言・読み取り専用・中断とタイムアウトの強制の可否を返す。省略すると false", async () => {
     expect(unwrap(await build().listConnections())).toEqual([
-      { name: "main", dialect: "postgres", readOnly: true, capabilities: { cancel: true } },
-      { name: "lite", dialect: "sqlite", readOnly: false, capabilities: { cancel: false } },
+      {
+        name: "main",
+        dialect: "postgres",
+        readOnly: true,
+        capabilities: { cancel: true, enforcesTimeout: true },
+      },
+      {
+        name: "lite",
+        dialect: "sqlite",
+        readOnly: false,
+        capabilities: { cancel: false, enforcesTimeout: false },
+      },
     ]);
   });
 
