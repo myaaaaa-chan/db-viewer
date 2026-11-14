@@ -1,0 +1,20 @@
+{
+  "name": "@myaaaaa_chan/db-viewer-e2e",
+  "private": true,
+  "description": "Playwright E2E tests that start the real db-viewer CLI.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@myaaaaa_chan/db-viewer-cli": "workspace:*",
+    "@playwright/test": "1.64.0",
+    "@testcontainers/postgresql": "^11.14.0",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/pg": "^8.23.1",
+    "better-sqlite3": "^13.1.1",
+    "pg": "^8.23.1",
+    "testcontainers": "^11.14.0"
+  }
+}
