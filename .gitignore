@@ -12,3 +12,5 @@ __screenshots__
 .next
 next-env.d.ts
 tarballs
+
+docs/

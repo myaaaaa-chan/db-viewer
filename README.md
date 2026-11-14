@@ -190,7 +190,6 @@ pnpm test         # needs Docker for the PostgreSQL tests (Testcontainers)
 pnpm lint && pnpm typecheck
 ```
 
-Design documents are in [docs/設計](./docs/設計/01_MVP基本設計/README.md) and decisions in [docs/adr](./docs/adr/README.md) (Japanese).
 Run `pnpm changeset` to describe a change for the next release.
 
 ## License

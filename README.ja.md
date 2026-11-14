@@ -190,7 +190,6 @@ pnpm test         # PostgreSQL のテストに Docker が要る（Testcontainers
 pnpm lint && pnpm typecheck
 ```
 
-設計書は [docs/設計](./docs/設計/01_MVP基本設計/README.md)、決定の記録は [docs/adr](./docs/adr/README.md) にあります。
 変更を次のリリースに載せるには、`pnpm changeset` で変更の説明を書きます。
 
 ## ライセンス
