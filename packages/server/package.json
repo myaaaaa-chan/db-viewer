@@ -37,7 +37,8 @@
   "peerDependencies": {
     "@hono/node-server": "^2.1.8",
     "hono": "^4.13.0",
-    "pg": ">=8.12.0"
+    "pg": ">=8.12.0",
+    "pg-cursor": ">=2.12.0"
   },
   "peerDependenciesMeta": {
     "@hono/node-server": {
@@ -48,12 +49,21 @@
     },
     "pg": {
       "optional": true
+    },
+    "pg-cursor": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@hono/node-server": "^2.1.8",
+    "@testcontainers/postgresql": "^11.14.0",
     "@types/better-sqlite3": "^9.6.0",
+    "@types/pg": "^8.23.1",
+    "@types/pg-cursor": "^2.7.2",
     "better-sqlite3": "^13.1.1",
-    "hono": "^4.13.18"
+    "hono": "^4.13.18",
+    "pg": "^8.23.1",
+    "pg-cursor": "^2.22.1",
+    "testcontainers": "^11.14.0"
   }
 }
