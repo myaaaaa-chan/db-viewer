@@ -359,6 +359,22 @@ describe("createHandler: 設定", () => {
     ).toThrow(/maxRows/);
   });
 
+  it.each([undefined, null, true, "yes", {}])(
+    "authorize が関数でなければ（%s）、リクエストを待たず作成時に TypeError を投げる",
+    (authorize) => {
+      expect(() =>
+        createHandler({ connections: {}, authorize } as unknown as Parameters<
+          typeof createHandler
+        >[0]),
+      ).toThrow(TypeError);
+      expect(() =>
+        createHandler({ connections: {}, authorize } as unknown as Parameters<
+          typeof createHandler
+        >[0]),
+      ).toThrow(/authorize/);
+    },
+  );
+
   it("limits を省略するとき、設計書の既定値をアダプターに渡す", async () => {
     const fetchRows = vi.fn<DbAdapter["fetchRows"]>(async () =>
       ok({ columns: [], rows: [], truncated: false, truncatedCells: [] }),

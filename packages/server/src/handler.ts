@@ -119,6 +119,11 @@ const assertNever = (value: never): never => {
  * → 4. 接続名でアダプターを選ぶ → 5. op に応じて呼ぶ → 6. Result を JSON で返す。
  */
 export const createHandler = (options: HandlerOptions): Handler => {
+  // JavaScript の利用者が authorize を忘れると、型の検査は効かない。全員通すか全員断るかが
+  // 実行時まで決まらないので、作成時に止める（ADR 002）
+  if (typeof options.authorize !== "function") {
+    throw new TypeError("createHandler: authorize must be a function (ADR 002).");
+  }
   const limits = resolveLimits(options.limits);
   // 作成時に写して、Object.prototype の名前（constructor など）が接続名として通らないようにする
   const connections = new Map(Object.entries(options.connections));
